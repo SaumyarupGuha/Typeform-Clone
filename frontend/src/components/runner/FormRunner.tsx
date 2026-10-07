@@ -106,6 +106,12 @@ function RunnerSession({ form, preview }: Required<FormRunnerProps>) {
     }
   }
 
+  /** Records the answers so far on the server, so leaving part-way leaves a partial response behind. */
+  function saveProgress(keepalive = false) {
+    if (preview || Object.keys(state.answers).length === 0) return;
+    void session.saveProgress(toAnswerPayload(questions, state.answers), keepalive);
+  }
+
   function next() {
     if (state.status === "welcome") {
       session.startInBackground();
@@ -123,7 +129,10 @@ function RunnerSession({ form, preview }: Required<FormRunnerProps>) {
       // Logic jumps decide what comes next; null means the route ends here, so submit.
       const upcoming = nextIndex(questions, state.index, state.answers);
       if (upcoming === null) void submit();
-      else goTo(upcoming, 1);
+      else {
+        saveProgress();
+        goTo(upcoming, 1);
+      }
     }
   }
 
@@ -135,9 +144,20 @@ function RunnerSession({ form, preview }: Required<FormRunnerProps>) {
 
   // The auto-advance timer fires later, so it must call the newest `next`, not the one it was created with.
   const latestNext = useRef(next);
+  const latestSaveProgress = useRef(saveProgress);
   useEffect(() => {
     latestNext.current = next;
+    latestSaveProgress.current = saveProgress;
   });
+
+  // When the tab is hidden or closed, save what has been answered (keepalive lets the request finish).
+  useEffect(() => {
+    function onVisibilityChange() {
+      if (document.visibilityState === "hidden") latestSaveProgress.current(true);
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, []);
 
   function changeAnswer(question: Question, value: JsonValue | undefined) {
     session.startInBackground();

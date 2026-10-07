@@ -1,7 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api, ApiError, type FormFilters } from "./api";
-import type { Form, FormSettings } from "./types";
+import type { Form, FormSettings, ResponseStatusFilter } from "./types";
 
 export const formsKey = (filters: FormFilters = {}) => ["forms", filters] as const;
 
@@ -106,10 +106,10 @@ export function useSummary(formId: number) {
   return useQuery({ queryKey: ["summary", formId], queryFn: () => api.getSummary(formId), staleTime: 0 });
 }
 
-export function useResponses(formId: number, page: number) {
+export function useResponses(formId: number, page: number, status: ResponseStatusFilter) {
   return useQuery({
-    queryKey: ["responses", formId, page],
-    queryFn: () => api.listResponses(formId, page, RESPONSES_PAGE_SIZE),
+    queryKey: ["responses", formId, page, status],
+    queryFn: () => api.listResponses(formId, page, RESPONSES_PAGE_SIZE, status),
     placeholderData: keepPreviousData, // keep the old page on screen while the next one loads
     staleTime: 0,
   });

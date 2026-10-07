@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Modal } from "@/components/ui/Modal";
 import { Spinner } from "@/components/ui/Spinner";
+import { cn } from "@/lib/cn";
 import { formatAnswer, formatDateTime } from "@/lib/format";
 import { useDeleteResponse, useResponse } from "@/lib/queries";
+import type { ResponseDetail } from "@/lib/types";
 
 interface ResponseDrawerProps {
   formId: number;
@@ -48,7 +50,13 @@ export function ResponseDrawer({ formId, responseIds, openId, onOpenChange }: Re
         placement="right"
       >
         <div className="mb-5 flex items-center justify-between gap-2">
-          <p className="text-sm text-ink-muted">{response.data ? `Submitted ${formatDateTime(response.data.submitted_at)}` : " "}</p>
+          <p className="text-sm text-ink-muted">
+            {response.data
+              ? response.data.submitted_at
+                ? `Submitted ${formatDateTime(response.data.submitted_at)}`
+                : `Started ${formatDateTime(response.data.started_at)}`
+              : " "}
+          </p>
           <div className="flex gap-1">
             <Button variant="secondary" size="sm" disabled={previousId === null} onClick={() => onOpenChange(previousId)} aria-label="Previous response">
               <ChevronUp className="size-4" />
@@ -68,6 +76,14 @@ export function ResponseDrawer({ formId, responseIds, openId, onOpenChange }: Re
           </div>
         )}
         {response.isError && <p className="text-danger">{response.error.message}</p>}
+        {response.data?.status === "partial" && (
+          <p className="mb-5 rounded-control bg-surface px-4 py-3 text-sm">
+            <strong>Partial response.</strong>{" "}
+            {stoppedAfter(response.data)
+              ? `The respondent left after "${stoppedAfter(response.data)}".`
+              : "The respondent left before answering anything."}
+          </p>
+        )}
         {response.data && (
           <dl className="space-y-5">
             {response.data.answers.map(({ question, value }) => (
@@ -76,7 +92,9 @@ export function ResponseDrawer({ formId, responseIds, openId, onOpenChange }: Re
                   {question.title || "Untitled question"}
                   {question.deleted && <span className="ml-1 text-ink-faint">(deleted question)</span>}
                 </dt>
-                <dd className="mt-1 whitespace-pre-wrap break-words text-lg">{formatAnswer(value)}</dd>
+                <dd className={cn("mt-1 whitespace-pre-wrap break-words text-lg", value === null && "text-ink-faint")}>
+                  {formatAnswer(value)}
+                </dd>
               </div>
             ))}
           </dl>
@@ -94,4 +112,10 @@ export function ResponseDrawer({ formId, responseIds, openId, onOpenChange }: Re
       />
     </>
   );
+}
+
+/** The title of the furthest question a partial response answered. */
+function stoppedAfter(response: ResponseDetail): string | null {
+  const last = response.answers.find((entry) => entry.question.id === response.last_question_id);
+  return last ? last.question.title || "Untitled question" : null;
 }

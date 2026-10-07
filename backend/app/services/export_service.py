@@ -5,9 +5,9 @@ from pydantic import JsonValue
 from sqlalchemy.orm import Session
 
 from app.models.form import Form
-from app.models.response import Response
 from app.question_types import get_handler
-from app.services.response_service import completed_responses_query, questions_for_results
+from app.schemas.response import ResponseStatusFilter
+from app.services.response_service import PUBLIC_STATUS, newest_first, questions_for_results, responses_query
 
 _FORMULA_PREFIXES = ("=", "+", "-", "@")
 
@@ -24,16 +24,22 @@ def _cell(value: JsonValue) -> str:
     return f"'{text}" if text.startswith(_FORMULA_PREFIXES) else text
 
 
-def build_csv(db: Session, form: Form) -> str:
+def build_csv(db: Session, form: Form, status: ResponseStatusFilter = "completed") -> str:
+    """One row per response. Completed-only keeps the simple layout; including partial responses
+    adds a Status column and uses the start time for responses that were never submitted."""
     questions = questions_for_results(db, form)
+    with_status = status != "completed"
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["Submitted at", *[question.title or f"Question {question.id}" for question in questions]])
+    header = ["Status", "Date"] if with_status else ["Submitted at"]
+    writer.writerow([*header, *[question.title or f"Question {question.id}" for question in questions]])
 
-    query = completed_responses_query(form.id).order_by(Response.submitted_at.desc(), Response.id.desc())
-    for response in db.scalars(query):
+    for response in db.scalars(newest_first(responses_query(form.id, status))):
         answers = {answer.question_id: answer for answer in response.answers}
-        row = [response.submitted_at.isoformat(sep=" ") if response.submitted_at else ""]
+        moment = response.submitted_at or response.started_at
+        row = [moment.isoformat(sep=" ") if moment else ""]
+        if with_status:
+            row.insert(0, PUBLIC_STATUS[response.status].capitalize())
         for question in questions:
             answer = answers.get(question.id)
             value = get_handler(question.type).display_value(answer) if answer else None

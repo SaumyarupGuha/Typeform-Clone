@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { useSummary } from "@/lib/queries";
+import { DropOffCard } from "./DropOffCard";
 import { QuestionSummaryCard } from "./QuestionSummaryCard";
 import { StatsHeader } from "./StatsHeader";
 
@@ -18,7 +19,7 @@ export function SummaryTab({ formId }: { formId: number }) {
   }
   if (summary.isError) {
     return (
-      <div className="rounded-panel bg-white p-8 text-center">
+      <div className="rounded-panel bg-card p-8 text-center">
         <p className="mb-4 text-ink-muted">{summary.error.message}</p>
         <Button variant="secondary" onClick={() => void summary.refetch()}>
           Try again
@@ -30,6 +31,7 @@ export function SummaryTab({ formId }: { formId: number }) {
   return (
     <div className="space-y-4">
       <StatsHeader summary={summary.data} />
+      <DropOffCard summary={summary.data} />
       {summary.data.questions.map((questionSummary, index) => (
         <QuestionSummaryCard key={questionSummary.question_id} summary={questionSummary} number={index + 1} />
       ))}

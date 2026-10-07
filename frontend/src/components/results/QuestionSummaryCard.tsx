@@ -12,7 +12,7 @@ export function QuestionSummaryCard({ summary, number }: QuestionSummaryCardProp
   const { Summary } = QUESTION_TYPES[summary.type];
 
   return (
-    <article className="rounded-panel bg-white p-6">
+    <article className="rounded-panel bg-card p-6">
       <header className="mb-5 flex items-start gap-3">
         <TypeChip type={summary.type} />
         <div className="min-w-0 flex-1">

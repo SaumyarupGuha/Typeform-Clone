@@ -11,6 +11,7 @@ import type {
   QuestionUpdate,
   ResponseDetail,
   ResponseList,
+  ResponseStatusFilter,
   Summary,
   ThankYouScreen,
 } from "./types";
@@ -101,18 +102,25 @@ export const api = {
 
   // ----- Creator: results -----
   getSummary: (formId: number) => request<Summary>(`/api/forms/${formId}/summary`),
-  listResponses: (formId: number, page: number, limit: number) =>
-    request<ResponseList>(`/api/forms/${formId}/responses?page=${page}&limit=${limit}`),
+  listResponses: (formId: number, page: number, limit: number, status: ResponseStatusFilter = "completed") =>
+    request<ResponseList>(`/api/forms/${formId}/responses?page=${page}&limit=${limit}&status=${status}`),
   getResponse: (formId: number, responseId: number) =>
     request<ResponseDetail>(`/api/forms/${formId}/responses/${responseId}`),
   deleteResponse: (formId: number, responseId: number) =>
     request<void>(`/api/forms/${formId}/responses/${responseId}`, json("DELETE")),
-  csvExportUrl: (formId: number) => `${API_URL}/api/forms/${formId}/responses/export.csv`,
+  csvExportUrl: (formId: number, status: ResponseStatusFilter = "completed") =>
+    `${API_URL}/api/forms/${formId}/responses/export.csv?status=${status}`,
 
   // ----- Public (respondent) -----
   getPublicForm: (slug: string) => request<PublicForm>(`/api/public/forms/${slug}`),
   startResponse: (slug: string, metadata: Record<string, JsonValue> = {}) =>
     request<{ token: string }>(`/api/public/forms/${slug}/responses`, json("POST", { metadata })),
+  /** Saves the answers so far (best effort). `keepalive` lets it finish while the tab is closing. */
+  saveProgress: (slug: string, token: string, answers: AnswerInput[], keepalive = false) =>
+    request<void>(`/api/public/forms/${slug}/responses/${token}/progress`, {
+      ...json("PUT", { answers }),
+      keepalive,
+    }),
   submitResponse: (slug: string, token: string, answers: AnswerInput[]) =>
     request<{ thank_you_screen: ThankYouScreen }>(
       `/api/public/forms/${slug}/responses/${token}/submit`,

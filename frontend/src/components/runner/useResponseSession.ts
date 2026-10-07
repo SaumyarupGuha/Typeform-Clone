@@ -45,6 +45,20 @@ export function useResponseSession(form: PublicForm, preview: boolean, initialTo
     void ensureStarted().catch(() => undefined);
   }
 
+  /**
+   * Saves the answers given so far, so a respondent who leaves part-way is still recorded as a
+   * partial response. Best effort: a failure here must never get in the respondent's way.
+   */
+  async function saveProgress(answers: AnswerInput[], keepalive = false): Promise<void> {
+    if (preview) return;
+    try {
+      const current = await ensureStarted();
+      if (current) await api.saveProgress(form.slug, current, answers, keepalive);
+    } catch {
+      // ignore: the final submit sends everything again
+    }
+  }
+
   async function submit(answers: AnswerInput[]): Promise<SubmitOutcome> {
     if (preview) return { kind: "success", thankYou: form.settings.thank_you_screen };
 
@@ -78,5 +92,5 @@ export function useResponseSession(form: PublicForm, preview: boolean, initialTo
     }
   }
 
-  return { getToken: () => token.current, startInBackground, submit };
+  return { getToken: () => token.current, startInBackground, saveProgress, submit };
 }

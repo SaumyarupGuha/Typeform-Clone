@@ -144,9 +144,17 @@ export interface AnswerInput {
 
 // ----- Results -----
 
+export type ResponseStatus = "completed" | "partial";
+export type ResponseStatusFilter = ResponseStatus | "all";
+
 export interface ResponseRow {
   id: number;
-  submitted_at: string;
+  status: ResponseStatus;
+  started_at: string;
+  /** null while the response is still partial. */
+  submitted_at: string | null;
+  /** The furthest question answered: where a partial response stopped. */
+  last_question_id: number | null;
   answers: Record<string, JsonValue>;
 }
 
@@ -155,13 +163,17 @@ export interface ResponseList {
   total: number;
   page: number;
   limit: number;
+  completed_count: number;
+  partial_count: number;
   questions: Question[];
 }
 
 export interface ResponseDetail {
   id: number;
+  status: ResponseStatus;
   started_at: string;
-  submitted_at: string;
+  submitted_at: string | null;
+  last_question_id: number | null;
   answers: { question: Question; value: JsonValue }[];
 }
 
@@ -173,11 +185,24 @@ export interface QuestionSummary {
   stats: Record<string, JsonValue>;
 }
 
+export interface FunnelStep {
+  question_id: number;
+  title: string;
+  /** Responses (completed or partial) that answered this question. */
+  answered: number;
+  /** Partial responses whose furthest answer was this question. */
+  left_here: number;
+}
+
 export interface Summary {
   started: number;
   completed: number;
+  partial: number;
   completion_rate: number;
   avg_seconds: number | null;
+  /** Partial responses that never answered anything. */
+  left_before_first: number;
+  funnel: FunnelStep[];
   questions: QuestionSummary[];
 }
 

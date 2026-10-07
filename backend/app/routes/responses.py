@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Query, Response, status
 
 from app.core.deps import CurrentUser, DbSession
-from app.schemas.response import ResponseDetailOut, ResponseListOut
+from app.schemas.response import ResponseDetailOut, ResponseListOut, ResponseStatusFilter
 from app.schemas.summary import SummaryOut
 from app.services import export_service, form_service, response_service, summary_service
 
@@ -15,17 +15,20 @@ def list_responses(
     user: CurrentUser,
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=100),
+    status: ResponseStatusFilter = Query(default="completed"),
 ) -> ResponseListOut:
     form = form_service.get_owned_form(db, user, form_id)
-    return response_service.list_responses(db, form, page, limit)
+    return response_service.list_responses(db, form, page, limit, status)
 
 
 # Declared before /responses/{response_id} so "export.csv" is not parsed as an id.
 @router.get("/responses/export.csv")
-def export_csv(form_id: int, db: DbSession, user: CurrentUser) -> Response:
+def export_csv(
+    form_id: int, db: DbSession, user: CurrentUser, status: ResponseStatusFilter = Query(default="completed")
+) -> Response:
     form = form_service.get_owned_form(db, user, form_id)
     return Response(
-        content=export_service.build_csv(db, form),
+        content=export_service.build_csv(db, form, status),
         media_type="text/csv",
         headers={"Content-Disposition": f'attachment; filename="{form.slug}-responses.csv"'},
     )
