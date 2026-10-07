@@ -64,6 +64,16 @@ export function ratingSchema(question: Question) {
     .max(steps, `Please choose a rating from 1 to ${steps}`);
 }
 
+/** An uploaded file; while the upload is still running the value says so and is not yet an answer. */
+export const fileUploadSchema = () =>
+  z
+    .object(
+      { file_id: z.number(), name: z.string(), size: z.number().optional(), uploading: z.boolean().optional() },
+      { error: "Please upload a file" },
+    )
+    .refine((value) => !value.uploading, "Please wait for the upload to finish")
+    .refine((value) => value.file_id > 0, "Please upload a file");
+
 export const yesNoSchema = () => z.boolean({ error: "Please choose Yes or No" });
 
 export function dropdownSchema(question: Question) {

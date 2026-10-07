@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.core.clock import utcnow
 from app.core.errors import ConflictError, NotFoundError, ValidationFailedError
 from app.models.answer import Answer, AnswerOption
+from app.models.file import UploadedFile
 from app.models.form import Form
 from app.models.question import Question, QuestionOption
 from app.models.user import User
@@ -33,7 +34,10 @@ def _renumber(questions: list[Question]) -> None:
 
 
 def _has_answers(db: Session, question_id: int) -> bool:
-    return bool(db.scalar(select(exists().where(Answer.question_id == question_id))))
+    # Files count too: an upload that was never submitted still references the question.
+    has_answer = exists().where(Answer.question_id == question_id)
+    has_file = exists().where(UploadedFile.question_id == question_id)
+    return bool(db.scalar(select(has_answer | has_file)))
 
 
 def _touch_form(question: Question) -> None:

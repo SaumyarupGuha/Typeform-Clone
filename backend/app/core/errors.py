@@ -33,6 +33,11 @@ class ConflictError(AppError):
     code = "conflict"
 
 
+class PayloadTooLargeError(AppError):
+    status_code = 413
+    code = "file_too_large"
+
+
 class ValidationFailedError(AppError):
     status_code = 422
     code = "validation_error"

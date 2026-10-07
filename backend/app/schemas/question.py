@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator
 from app.schemas.logic import LogicConfig
 
 QuestionTypeName = Literal[
-    "short_text", "long_text", "multiple_choice", "dropdown", "email", "number", "yes_no", "rating"
+    "short_text", "long_text", "multiple_choice", "dropdown", "email", "number", "yes_no", "rating", "file_upload"
 ]
 
 

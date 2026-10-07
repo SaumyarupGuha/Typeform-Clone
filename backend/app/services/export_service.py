@@ -15,6 +15,10 @@ _FORMULA_PREFIXES = ("=", "+", "-", "@")
 def _cell(value: JsonValue) -> str:
     if value is None:
         return ""
+    if isinstance(value, dict):  # an uploaded file: show its name (the file itself is downloaded in the app)
+        value = value.get("name")
+        if value is None:
+            return ""
     if isinstance(value, bool):
         return "Yes" if value else "No"
     if isinstance(value, (int, float)):

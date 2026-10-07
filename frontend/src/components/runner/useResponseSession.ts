@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { api, ApiError } from "@/lib/api";
 import { clearDraft, saveDraftToken } from "@/lib/draft";
-import type { AnswerInput, PublicForm, ThankYouScreen } from "@/lib/types";
+import type { AnswerInput, PublicForm, ThankYouScreen, UploadedFile } from "@/lib/types";
 
 export type SubmitOutcome =
   | { kind: "success"; thankYou: ThankYouScreen }
@@ -59,6 +59,16 @@ export function useResponseSession(form: PublicForm, preview: boolean, initialTo
     }
   }
 
+  /** Uploads a file for a file question. In preview nothing is sent: the file is only remembered by name. */
+  async function uploadFile(questionId: number, file: File, onProgress: (fraction: number) => void): Promise<UploadedFile> {
+    if (preview) {
+      onProgress(1);
+      return { file_id: 1, name: file.name, size: file.size };
+    }
+    const current = await ensureStarted();
+    return api.uploadFile(form.slug, current as string, questionId, file, onProgress);
+  }
+
   async function submit(answers: AnswerInput[]): Promise<SubmitOutcome> {
     if (preview) return { kind: "success", thankYou: form.settings.thank_you_screen };
 
@@ -92,5 +102,5 @@ export function useResponseSession(form: PublicForm, preview: boolean, initialTo
     }
   }
 
-  return { getToken: () => token.current, startInBackground, saveProgress, submit };
+  return { getToken: () => token.current, startInBackground, saveProgress, uploadFile, submit };
 }

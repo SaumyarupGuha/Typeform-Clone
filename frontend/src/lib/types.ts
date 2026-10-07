@@ -11,6 +11,7 @@ export const QUESTION_TYPE_NAMES = [
   "number",
   "yes_no",
   "rating",
+  "file_upload",
 ] as const;
 
 export type QuestionType = (typeof QUESTION_TYPE_NAMES)[number];
@@ -19,6 +20,14 @@ export interface Option {
   id: number;
   label: string;
 }
+
+/** The answer to a file_upload question; what the server returns after an upload. */
+// A type alias (not an interface) so it is assignable to JsonValue, which answers are stored as.
+export type UploadedFile = {
+  file_id: number;
+  name: string;
+  size: number;
+};
 
 // ----- Logic jumps -----
 

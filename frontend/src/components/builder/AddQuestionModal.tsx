@@ -13,7 +13,7 @@ const GROUPS: { title: string; types: QuestionType[] }[] = [
   { title: "Choice", types: ["multiple_choice", "dropdown", "yes_no"] },
   { title: "Contact info", types: ["email"] },
   { title: "Rating", types: ["rating"] },
-  { title: "Other", types: ["number"] },
+  { title: "Other", types: ["number", "file_upload"] },
 ];
 
 interface AddQuestionModalProps {

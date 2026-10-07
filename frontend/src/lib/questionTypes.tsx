@@ -27,8 +27,11 @@ import { RatingSummary } from "@/components/results/summaries/RatingSummary";
 import { TextSummary } from "@/components/results/summaries/TextSummary";
 import type { QuestionSummaryProps } from "@/components/results/summaries/types";
 import { YesNoSummary } from "@/components/results/summaries/YesNoSummary";
+import { FileUploadSettings } from "@/components/builder/TypeSettings/FileUploadSettings";
+import { FileSummary } from "@/components/results/summaries/FileSummary";
 import { Dropdown } from "@/components/runner/inputs/Dropdown";
 import { Email } from "@/components/runner/inputs/Email";
+import { FileUpload } from "@/components/runner/inputs/FileUpload";
 import { LongText } from "@/components/runner/inputs/LongText";
 import { MultipleChoice, selectedIds } from "@/components/runner/inputs/MultipleChoice";
 import { NumberInput } from "@/components/runner/inputs/NumberInput";
@@ -42,6 +45,7 @@ import type { JsonValue, Question, QuestionType } from "./types";
 import {
   dropdownSchema,
   emailSchema,
+  fileUploadSchema,
   isEmptyAnswer,
   longTextSchema,
   multipleChoiceSchema,
@@ -222,13 +226,25 @@ export const QUESTION_TYPES: Record<QuestionType, QuestionTypeDef> = {
       return rating <= steps ? rating : undefined;
     },
   },
+  file_upload: {
+    label: "File Upload",
+    icon: Upload,
+    chipClass: "bg-type-number text-type-number-ink",
+    defaultProperties: { max_size_mb: 10, allowed_types: "any" },
+    hasOptions: false,
+    logicKind: "file",
+    isEmpty: isEmptyAnswer,
+    Input: FileUpload,
+    Settings: FileUploadSettings,
+    Summary: FileSummary,
+    schema: fileUploadSchema,
+    autoAdvance: noAutoAdvance,
+    answerForKey: noKeyAnswer,
+  },
 };
 
 /** Types shown greyed out with a "Coming soon" label in the Add question modal. */
-export const COMING_SOON_TYPES: { label: string; icon: LucideIcon }[] = [
-  { label: "File Upload", icon: Upload },
-  { label: "Payment", icon: CreditCard },
-];
+export const COMING_SOON_TYPES: { label: string; icon: LucideIcon }[] = [{ label: "Payment", icon: CreditCard }];
 
 /**
  * Validates one answer: null when fine, otherwise the message to show. Empty answers

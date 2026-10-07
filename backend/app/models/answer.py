@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from sqlalchemy import REAL, Boolean, ForeignKey, Index, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
 from app.models.question import QuestionOption
 from app.models.response import Response
+
+if TYPE_CHECKING:
+    from app.models.file import UploadedFile
 
 
 class Answer(Base):
@@ -26,6 +31,8 @@ class Answer(Base):
     answer_options: Mapped[list[AnswerOption]] = relationship(
         back_populates="answer", cascade="all, delete-orphan", passive_deletes=True
     )
+    # Only file_upload answers have one.
+    file: Mapped[UploadedFile | None] = relationship(back_populates="answer", uselist=False)
 
 
 class AnswerOption(Base):

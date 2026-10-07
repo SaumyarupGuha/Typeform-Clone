@@ -1,6 +1,6 @@
 """Conditions for logic jumps: which operators each kind of question supports, and how they are evaluated.
 
-Every question type declares one `logic_kind` (text, number, choice or boolean) and gets
+Every question type declares one `logic_kind` (text, number, choice, boolean or file) and gets
 the matching operators for free. The frontend mirrors this file in lib/logic.ts, so a
 branch is decided identically in the browser (to show the next screen) and on the server
 (to know which required questions were skipped).
@@ -10,7 +10,7 @@ from typing import Literal
 
 from pydantic import JsonValue
 
-LogicKind = Literal["text", "number", "choice", "boolean"]
+LogicKind = Literal["text", "number", "choice", "boolean", "file"]
 
 _ANSWERED = ("is_answered", "is_not_answered")
 
@@ -19,6 +19,7 @@ OPERATORS: dict[str, tuple[str, ...]] = {
     "number": ("is", "is_not", "greater_than", "greater_or_equal", "less_than", "less_or_equal", *_ANSWERED),
     "choice": ("is", "is_not", *_ANSWERED),
     "boolean": ("is", "is_not", *_ANSWERED),
+    "file": _ANSWERED,  # a file can only be present or absent
 }
 
 ALL_OPERATORS = tuple(dict.fromkeys(op for ops in OPERATORS.values() for op in ops))

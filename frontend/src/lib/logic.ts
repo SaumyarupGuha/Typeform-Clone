@@ -8,7 +8,7 @@
 import { QUESTION_TYPES } from "./questionTypes";
 import type { JsonValue, JumpTarget, LogicCondition, LogicConfig, LogicOperator, LogicRule, Question } from "./types";
 
-export type LogicKind = "text" | "number" | "choice" | "boolean";
+export type LogicKind = "text" | "number" | "choice" | "boolean" | "file";
 
 const ANSWERED: LogicOperator[] = ["is_answered", "is_not_answered"];
 
@@ -17,6 +17,7 @@ export const OPERATORS: Record<LogicKind, LogicOperator[]> = {
   number: ["is", "is_not", "greater_than", "greater_or_equal", "less_than", "less_or_equal", ...ANSWERED],
   choice: ["is", "is_not", ...ANSWERED],
   boolean: ["is", "is_not", ...ANSWERED],
+  file: ANSWERED, // a file can only be present or absent
 };
 
 export const OPERATOR_LABELS: Record<LogicOperator, string> = {

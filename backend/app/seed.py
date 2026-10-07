@@ -134,6 +134,11 @@ RESEARCH_QUESTIONS = [
         options=["Surveys", "Lead capture", "Quizzes", "Registrations"],
     ),
     QuestionSpec("rating", "How satisfied are you with your current tool?", properties={"steps": 5}),
+    QuestionSpec(
+        "file_upload", "Upload a screenshot of how you work today",
+        description="Optional. It helps us understand your setup.",
+        properties={"max_size_mb": 10, "allowed_types": "images"},
+    ),
 ]
 
 

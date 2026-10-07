@@ -1,9 +1,11 @@
-from fastapi import APIRouter, Request, Response, status
+from urllib.parse import unquote
+
+from fastapi import APIRouter, Header, Request, Response, status
 
 from app.core.deps import DbSession
 from app.schemas.form import PublicFormOut
-from app.schemas.response import ProgressIn, StartResponseIn, StartResponseOut, SubmitIn, SubmitOut
-from app.services import response_service
+from app.schemas.response import ProgressIn, StartResponseIn, StartResponseOut, SubmitIn, SubmitOut, UploadedFileOut
+from app.services import file_service, response_service
 
 router = APIRouter(prefix="/api/public/forms/{slug}", tags=["public"])
 
@@ -30,3 +32,19 @@ def save_progress(slug: str, token: str, payload: ProgressIn, db: DbSession) -> 
     """Save the answers given so far; called as the respondent moves through the form."""
     response_service.save_progress(db, slug, token, payload)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.put("/responses/{token}/files/{question_id}", response_model=UploadedFileOut, status_code=201)
+async def upload_file(
+    slug: str,
+    token: str,
+    question_id: int,
+    request: Request,
+    db: DbSession,
+    x_file_name: str = Header(default="file"),
+) -> UploadedFileOut:
+    """Upload the file for a file question. The raw file is the request body; its name comes in a header."""
+    response, question = response_service.prepare_file_upload(db, slug, token, question_id)
+    data = await file_service.read_limited(request, file_service.max_bytes(question))
+    stored = file_service.store_file(db, response, question, unquote(x_file_name), request.headers.get("content-type"), data)
+    return UploadedFileOut(file_id=stored.id, name=stored.original_name, size=stored.size_bytes)

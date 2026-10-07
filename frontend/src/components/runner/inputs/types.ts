@@ -7,6 +7,9 @@ export interface ChoiceEditing {
   onRemove: (optionId: number) => void;
 }
 
+/** Uploads a file and reports progress (0 to 1); resolves with the stored file. Only the runner provides one. */
+export type UploadHandler = (file: File, onProgress: (fraction: number) => void) => Promise<JsonValue>;
+
 /**
  * Props shared by every question input. The respondent flow and the builder canvas
  * render the very same components, so the builder preview is the real thing.
@@ -21,4 +24,6 @@ export interface QuestionInputProps {
   invalid?: boolean;
   /** Builder only: when set, choice questions render editable labels instead of answer buttons. */
   editing?: ChoiceEditing;
+  /** Runner only: file questions use it to upload. Without it (the builder) a chosen file is only shown. */
+  upload?: UploadHandler;
 }

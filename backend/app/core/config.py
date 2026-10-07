@@ -9,6 +9,8 @@ class Settings:
     frontend_origins: tuple[str, ...]
     default_user_email: str
     default_user_name: str
+    # Folder where uploaded files are stored (on Railway, a path inside the /data volume).
+    upload_dir: str
 
     @property
     def frontend_origin(self) -> str:
@@ -27,6 +29,7 @@ def load_settings() -> Settings:
         frontend_origins=_parse_origins(os.getenv("FRONTEND_ORIGIN", "http://localhost:3000,http://127.0.0.1:3000")),
         default_user_email="creator@example.com",
         default_user_name="Default Creator",
+        upload_dir=os.getenv("UPLOAD_DIR", "./uploads"),
     )
 
 

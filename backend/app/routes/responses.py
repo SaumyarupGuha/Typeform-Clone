@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Query, Response, status
+from fastapi.responses import FileResponse
 
 from app.core.deps import CurrentUser, DbSession
+from app.core.errors import NotFoundError
 from app.schemas.response import ResponseDetailOut, ResponseListOut, ResponseStatusFilter
 from app.schemas.summary import SummaryOut
-from app.services import export_service, form_service, response_service, summary_service
+from app.services import export_service, file_service, form_service, response_service, summary_service
 
 router = APIRouter(prefix="/api/forms/{form_id}", tags=["results"])
 
@@ -51,3 +53,19 @@ def delete_response(form_id: int, response_id: int, db: DbSession, user: Current
 def get_summary(form_id: int, db: DbSession, user: CurrentUser) -> SummaryOut:
     form = form_service.get_owned_form(db, user, form_id)
     return summary_service.build_summary(db, form)
+
+
+@router.get("/files/{file_id}")
+def download_file(form_id: int, file_id: int, db: DbSession, user: CurrentUser) -> FileResponse:
+    """Download a respondent's uploaded file. Owner only, and always as an attachment (never rendered)."""
+    form = form_service.get_owned_form(db, user, form_id)
+    stored = file_service.get_owned_file(db, form, file_id)
+    path = file_service.file_path(stored.storage_key)
+    if not path.is_file():
+        raise NotFoundError("The file is no longer available")
+    return FileResponse(
+        path,
+        media_type="application/octet-stream",  # never the respondent's claimed type: nothing is rendered inline
+        filename=stored.original_name,
+        headers={"X-Content-Type-Options": "nosniff"},
+    )

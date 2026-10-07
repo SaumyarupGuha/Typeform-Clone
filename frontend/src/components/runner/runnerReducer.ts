@@ -1,4 +1,5 @@
 import type { Draft } from "@/lib/draft";
+import { asFileAnswer } from "@/lib/fileAnswer";
 import { computePath } from "@/lib/logic";
 import type { JsonValue, PublicForm, ThankYouScreen } from "@/lib/types";
 
@@ -32,6 +33,11 @@ export type RunnerAction =
   | { type: "submitted"; thankYou: ThankYouScreen }
   | { type: "closed" };
 
+/** A saved draft can hold an upload that never finished; it is not an answer, so it is dropped. */
+function withoutRunningUploads(answers: Record<number, JsonValue>): Record<number, JsonValue> {
+  return Object.fromEntries(Object.entries(answers).filter(([, value]) => !asFileAnswer(value)?.uploading));
+}
+
 export function createInitialState(form: PublicForm, draft: Draft | null): RunnerState {
   const hasProgress = draft !== null && (Object.keys(draft.answers).length > 0 || draft.index > 0);
   const showWelcome = form.settings.welcome_screen.enabled && !hasProgress;
@@ -47,7 +53,7 @@ export function createInitialState(form: PublicForm, draft: Draft | null): Runne
     index,
     direction: 1,
     history: draft?.history ?? rebuilt,
-    answers: draft?.answers ?? {},
+    answers: withoutRunningUploads(draft?.answers ?? {}),
     errors: {},
     errorTick: 0,
     thankYou: null,

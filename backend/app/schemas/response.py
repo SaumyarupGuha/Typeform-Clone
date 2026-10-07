@@ -30,6 +30,14 @@ class ProgressIn(BaseModel):
     answers: list[AnswerIn]
 
 
+class UploadedFileOut(BaseModel):
+    """What the browser keeps as the answer to a file question, and sends back on submit."""
+
+    file_id: int
+    name: str
+    size: int
+
+
 class SubmitOut(BaseModel):
     thank_you_screen: ThankYouScreen
 

@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.models.answer import Answer
 from app.models.question import Question
+from app.models.response import Response
 
 Properties = dict[str, JsonValue]
 
@@ -56,6 +57,20 @@ class QuestionTypeHandler(ABC):
     @abstractmethod
     def to_columns(self, value: JsonValue) -> AnswerColumns:
         """Convert a validated answer into column values."""
+
+    # --- Hooks for the few types whose answer points at stored data (a file). Most types ignore them. ---
+
+    def validate_for_response(self, db: Session, response: Response, question: Question, value: JsonValue) -> str | None:
+        """Extra check that needs the database and the response (for example that a file belongs to it)."""
+        return None
+
+    def columns_for_response(self, db: Session, response: Response, question: Question, value: JsonValue) -> AnswerColumns:
+        """Like `to_columns`, for types that must look at stored data."""
+        return self.to_columns(value)
+
+    def after_answer_saved(self, db: Session, answer: Answer, value: JsonValue) -> None:
+        """Runs once the answer row exists and has an id."""
+        return None
 
     @abstractmethod
     def display_value(self, answer: Answer) -> JsonValue:

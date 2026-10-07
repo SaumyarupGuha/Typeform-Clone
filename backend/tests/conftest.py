@@ -1,4 +1,6 @@
 from collections.abc import Iterator
+from dataclasses import replace
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -11,6 +13,15 @@ from app.core.config import settings
 from app.core.database import Base, create_db_engine, get_db
 from app.main import app
 from app.models.user import User
+from app.services import file_service
+
+
+@pytest.fixture(autouse=True)
+def upload_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Every test uploads into its own temporary folder, never into the project."""
+    folder = tmp_path / "uploads"
+    monkeypatch.setattr(file_service, "settings", replace(settings, upload_dir=str(folder)))
+    return folder
 
 
 @pytest.fixture()

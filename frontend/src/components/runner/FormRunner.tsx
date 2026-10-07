@@ -213,6 +213,7 @@ function RunnerSession({ form, preview }: Required<FormRunnerProps>) {
               submitting={state.status === "submitting"}
               onChange={(value) => changeAnswer(question, value)}
               onNext={next}
+              upload={(file, onProgress) => session.uploadFile(question.id, file, onProgress)}
             />
           )}
         </Screen>

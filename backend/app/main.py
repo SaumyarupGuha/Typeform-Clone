@@ -8,12 +8,14 @@ from app import models  # noqa: F401  (registers every table on Base.metadata)
 from app.core.config import settings
 from app.core.database import Base, engine
 from app.core.errors import register_error_handlers
+from app.core.migrations import upgrade_schema
 from app.routes import forms, public, questions, responses
 from app.seed import seed_if_empty
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    upgrade_schema(engine)  # bring a database made by an older version up to date first
     Base.metadata.create_all(engine)
     seed_if_empty()
     yield

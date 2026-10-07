@@ -1,6 +1,7 @@
 from app.core.errors import ValidationFailedError
 from app.question_types.base import Properties, QuestionTypeHandler
 from app.question_types.choice import DropdownHandler, MultipleChoiceHandler
+from app.question_types.files import FileUploadHandler
 from app.question_types.numeric import NumberHandler, RatingHandler
 from app.question_types.text import EmailHandler, LongTextHandler, ShortTextHandler
 from app.question_types.yes_no import YesNoHandler
@@ -14,6 +15,7 @@ _HANDLERS: list[QuestionTypeHandler] = [
     NumberHandler(),
     YesNoHandler(),
     RatingHandler(),
+    FileUploadHandler(),
 ]
 
 QUESTION_TYPES: dict[str, QuestionTypeHandler] = {handler.name: handler for handler in _HANDLERS}

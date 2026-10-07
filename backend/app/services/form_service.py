@@ -12,7 +12,7 @@ from app.models.response import Response
 from app.models.user import User
 from app.question_types import get_handler
 from app.schemas.form import FormSettings, FormSummaryOut, FormUpdate
-from app.services import logic_service
+from app.services import file_service, logic_service
 
 SLUG_ALPHABET = string.ascii_letters + string.digits
 SLUG_LENGTH = 8
@@ -83,8 +83,10 @@ def delete_form(db: Session, form: Form) -> None:
     # A bulk DELETE lets the database cascade to questions, responses and answers in
     # one statement; deleting through the ORM would try to remove questions first
     # and trip over the answers that still reference them.
+    stored = file_service.keys_for_form(db, form.id)
     db.execute(delete(Form).where(Form.id == form.id))
     db.commit()
+    file_service.delete_stored(stored)
 
 
 def duplicate_form(db: Session, user: User, source: Form) -> Form:

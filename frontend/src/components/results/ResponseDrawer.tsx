@@ -1,13 +1,15 @@
 "use client";
 
-import { ChevronDown, ChevronUp, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Download, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Modal } from "@/components/ui/Modal";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
-import { formatAnswer, formatDateTime } from "@/lib/format";
+import { formatAnswer, formatBytes, formatDateTime } from "@/lib/format";
+import { api } from "@/lib/api";
+import { asFileAnswer } from "@/lib/fileAnswer";
 import { useDeleteResponse, useResponse } from "@/lib/queries";
 import type { ResponseDetail } from "@/lib/types";
 
@@ -86,17 +88,31 @@ export function ResponseDrawer({ formId, responseIds, openId, onOpenChange }: Re
         )}
         {response.data && (
           <dl className="space-y-5">
-            {response.data.answers.map(({ question, value }) => (
-              <div key={question.id}>
-                <dt className="text-sm text-ink-muted">
-                  {question.title || "Untitled question"}
-                  {question.deleted && <span className="ml-1 text-ink-faint">(deleted question)</span>}
-                </dt>
-                <dd className={cn("mt-1 whitespace-pre-wrap break-words text-lg", value === null && "text-ink-faint")}>
-                  {formatAnswer(value)}
-                </dd>
-              </div>
-            ))}
+            {response.data.answers.map(({ question, value }) => {
+              const file = asFileAnswer(value);
+              return (
+                <div key={question.id}>
+                  <dt className="text-sm text-ink-muted">
+                    {question.title || "Untitled question"}
+                    {question.deleted && <span className="ml-1 text-ink-faint">(deleted question)</span>}
+                  </dt>
+                  <dd className={cn("mt-1 whitespace-pre-wrap break-words text-lg", value === null && "text-ink-faint")}>
+                    {file ? (
+                      <a
+                        href={api.fileUrl(formId, file.file_id)}
+                        className="inline-flex items-center gap-2 underline underline-offset-4 hover:opacity-70"
+                      >
+                        <Download className="size-4" aria-hidden />
+                        {file.name}
+                        <span className="text-sm text-ink-muted">({formatBytes(file.size)})</span>
+                      </a>
+                    ) : (
+                      formatAnswer(value)
+                    )}
+                  </dd>
+                </div>
+              );
+            })}
           </dl>
         )}
       </Modal>

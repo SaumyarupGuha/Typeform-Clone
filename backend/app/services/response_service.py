@@ -23,7 +23,7 @@ from app.schemas.response import (
     ResponseStatusFilter,
     SubmitIn,
 )
-from app.services import logic_service
+from app.services import file_service, logic_service
 
 # A response row is "in_progress" in the database and shown as "partial" in the API and UI.
 PUBLIC_STATUS = {"completed": "completed", "in_progress": "partial"}
@@ -55,7 +55,7 @@ def start_response(db: Session, slug: str, metadata: dict[str, JsonValue], user_
     return response
 
 
-def _get_open_response(db: Session, form: Form, token: str) -> Response:
+def get_open_response(db: Session, form: Form, token: str) -> Response:
     response = db.scalar(select(Response).where(Response.token == token, Response.form_id == form.id))
     if response is None:
         raise NotFoundError("Response not found")
@@ -64,7 +64,9 @@ def _get_open_response(db: Session, form: Form, token: str) -> Response:
     return response
 
 
-def _validate_answers(questions: list[Question], answers: list[AnswerIn]) -> tuple[dict[str, str], list[Question]]:
+def _validate_answers(
+    db: Session, response: Response, questions: list[Question], answers: list[AnswerIn]
+) -> tuple[dict[str, str], list[Question]]:
     """Check the answers. Returns ({question_id: message}, the questions on the respondent's path).
 
     Only questions the respondent actually saw count: logic jumps can skip a required
@@ -92,10 +94,20 @@ def _validate_answers(questions: list[Question], answers: list[AnswerIn]) -> tup
             if question.required:
                 errors[str(question.id)] = "This question is required"
             continue
-        message = handler.validate(question, value)
+        message = handler.validate(question, value) or handler.validate_for_response(db, response, question, value)
         if message:
             errors[str(question.id)] = message
     return errors, path
+
+
+def prepare_file_upload(db: Session, slug: str, token: str, question_id: int) -> tuple[Response, Question]:
+    """Check an upload may start: published form, an open response of it, and a file question of it."""
+    form = get_published_form(db, slug)
+    response = get_open_response(db, form, token)
+    question = next((q for q in form.live_questions if q.id == question_id and q.type == "file_upload"), None)
+    if question is None:
+        raise NotFoundError("This question does not accept files")
+    return response, question
 
 
 def _replace_answers(db: Session, response: Response, values: dict[int, JsonValue]) -> None:
@@ -105,24 +117,22 @@ def _replace_answers(db: Session, response: Response, values: dict[int, JsonValu
     as a respondent goes (progress) and finally submitted.
     """
     db.execute(delete(Answer).where(Answer.response_id == response.id))  # answer_options cascade
-    types = _question_types(db, response)
+    questions = {q.id: q for q in db.scalars(select(Question).where(Question.form_id == response.form_id))}
     for question_id, value in values.items():
-        columns = get_handler(types[question_id]).to_columns(value)
-        db.add(
-            Answer(
-                response_id=response.id,
-                question_id=question_id,
-                text_value=columns.text_value,
-                number_value=columns.number_value,
-                boolean_value=columns.boolean_value,
-                answer_options=[AnswerOption(option_id=option_id) for option_id in columns.option_ids],
-            )
+        question = questions[question_id]
+        handler = get_handler(question.type)
+        columns = handler.columns_for_response(db, response, question, value)
+        answer = Answer(
+            response_id=response.id,
+            question_id=question_id,
+            text_value=columns.text_value,
+            number_value=columns.number_value,
+            boolean_value=columns.boolean_value,
+            answer_options=[AnswerOption(option_id=option_id) for option_id in columns.option_ids],
         )
-
-
-def _question_types(db: Session, response: Response) -> dict[int, str]:
-    rows = db.execute(select(Question.id, Question.type).where(Question.form_id == response.form_id))
-    return {question_id: question_type for question_id, question_type in rows}
+        db.add(answer)
+        db.flush()  # gives the answer its id for the hook below
+        handler.after_answer_saved(db, answer, value)
 
 
 def save_progress(db: Session, slug: str, token: str, payload: ProgressIn) -> None:
@@ -132,7 +142,7 @@ def save_progress(db: Session, slug: str, token: str, payload: ProgressIn) -> No
     does not validate yet (half-typed) is simply not saved. The next call overwrites this one.
     """
     form = get_published_form(db, slug)
-    response = _get_open_response(db, form, token)
+    response = get_open_response(db, form, token)
     questions = form.live_questions
     live_ids = {question.id for question in questions}
 
@@ -141,7 +151,11 @@ def save_progress(db: Session, slug: str, token: str, payload: ProgressIn) -> No
     for question in logic_service.compute_path(questions, given):
         handler = get_handler(question.type)
         value = given.get(question.id)
-        if not handler.is_empty(value) and handler.validate(question, value) is None:
+        if (
+            not handler.is_empty(value)
+            and handler.validate(question, value) is None
+            and handler.validate_for_response(db, response, question, value) is None
+        ):
             storable[question.id] = value
     _replace_answers(db, response, storable)
     db.commit()
@@ -149,10 +163,10 @@ def save_progress(db: Session, slug: str, token: str, payload: ProgressIn) -> No
 
 def submit_response(db: Session, slug: str, token: str, payload: SubmitIn) -> FormSettings:
     form = get_published_form(db, slug)
-    response = _get_open_response(db, form, token)
+    response = get_open_response(db, form, token)
     questions = form.live_questions
 
-    errors, path = _validate_answers(questions, payload.answers)
+    errors, path = _validate_answers(db, response, questions, payload.answers)
     if errors:
         raise ValidationFailedError(errors=errors)
 
@@ -200,6 +214,7 @@ def responses_query(form_id: int, status: ResponseStatusFilter = "completed") ->
             .selectinload(Answer.answer_options)
             .selectinload(AnswerOption.option)
         )
+        .options(selectinload(Response.answers).selectinload(Answer.file))
     )
     if status == "completed":
         query = query.where(Response.status == "completed")
@@ -290,5 +305,7 @@ def get_response_detail(db: Session, form: Form, response_id: int) -> ResponseDe
 
 def delete_response(db: Session, form: Form, response_id: int) -> None:
     get_response(db, form, response_id)
-    db.execute(delete(Response).where(Response.id == response_id))  # DB cascades to answers
+    stored = file_service.keys_for_response(db, response_id)
+    db.execute(delete(Response).where(Response.id == response_id))  # DB cascades to answers and file rows
     db.commit()
+    file_service.delete_stored(stored)  # only after the rows are gone, so a failure cannot orphan a row

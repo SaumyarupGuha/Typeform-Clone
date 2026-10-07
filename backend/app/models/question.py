@@ -23,6 +23,7 @@ QUESTION_TYPE_NAMES = (
     "number",
     "yes_no",
     "rating",
+    "file_upload",
 )
 _TYPE_LIST_SQL = ",".join(f"'{name}'" for name in QUESTION_TYPE_NAMES)
 

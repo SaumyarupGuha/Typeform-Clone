@@ -14,6 +14,7 @@ import type {
   ResponseStatusFilter,
   Summary,
   ThankYouScreen,
+  UploadedFile,
 } from "./types";
 
 export const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000").replace(/\/$/, "");
@@ -121,6 +122,42 @@ export const api = {
       ...json("PUT", { answers }),
       keepalive,
     }),
+  /** Uploads a file for a file question. Uses XMLHttpRequest because fetch cannot report upload progress. */
+  uploadFile: (
+    slug: string,
+    token: string,
+    questionId: number,
+    file: File,
+    onProgress: (fraction: number) => void,
+  ): Promise<UploadedFile> =>
+    new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", `${API_URL}/api/public/forms/${slug}/responses/${token}/files/${questionId}`);
+      // The raw file is the body; its name travels in a header (percent-encoded so any name is safe).
+      xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+      xhr.setRequestHeader("X-File-Name", encodeURIComponent(file.name));
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) onProgress(event.loaded / event.total);
+      };
+      xhr.onerror = () => reject(new ApiError(0, "network_error", "Could not reach the server. Check your connection."));
+      xhr.onload = () => {
+        let body: unknown = null;
+        try {
+          body = JSON.parse(xhr.responseText);
+        } catch {
+          // not JSON; handled below
+        }
+        if (xhr.status >= 200 && xhr.status < 300) return resolve(body as UploadedFile);
+        if (isErrorBody(body)) {
+          const { code, message, errors } = body.detail;
+          return reject(new ApiError(xhr.status, code, message, errors ?? {}));
+        }
+        reject(new ApiError(xhr.status, "unknown_error", `Upload failed (${xhr.status})`));
+      };
+      xhr.send(file);
+    }),
+  /** The link a form's owner follows to download a respondent's file. */
+  fileUrl: (formId: number, fileId: number) => `${API_URL}/api/forms/${formId}/files/${fileId}`,
   submitResponse: (slug: string, token: string, answers: AnswerInput[]) =>
     request<{ thank_you_screen: ThankYouScreen }>(
       `/api/public/forms/${slug}/responses/${token}/submit`,

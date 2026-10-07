@@ -4,6 +4,7 @@ import { useAnimationControls, motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { useEffect, useId } from "react";
 import { QUESTION_TYPES } from "@/lib/questionTypes";
+import type { UploadHandler } from "./inputs/types";
 import type { JsonValue, Question } from "@/lib/types";
 import { ErrorMessage } from "./ErrorMessage";
 import { OkButton } from "./OkButton";
@@ -20,6 +21,8 @@ interface QuestionScreenProps {
   submitting: boolean;
   onChange: (value: JsonValue | undefined) => void;
   onNext: () => void;
+  /** Used by file questions to upload what the respondent chose. */
+  upload?: UploadHandler;
 }
 
 export function QuestionScreen({
@@ -32,6 +35,7 @@ export function QuestionScreen({
   submitting,
   onChange,
   onNext,
+  upload,
 }: QuestionScreenProps) {
   const errorId = useId();
   const shake = useAnimationControls();
@@ -61,7 +65,7 @@ export function QuestionScreen({
       {question.description && <p className="mt-2 text-lg opacity-70 sm:pl-8">{question.description}</p>}
 
       <motion.div animate={shake} className="mt-8 sm:pl-8">
-        <Input question={question} value={value} onChange={onChange} invalid={Boolean(error)} errorId={errorId} />
+        <Input question={question} value={value} onChange={onChange} invalid={Boolean(error)} errorId={errorId} upload={upload} />
         {error && <ErrorMessage id={errorId} message={error} />}
         <OkButton label={isLast ? "Submit" : "OK"} showCheck={!isLast} loading={submitting} onClick={onNext} />
       </motion.div>
