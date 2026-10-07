@@ -82,9 +82,9 @@ export function Dropdown({ question, value, onChange, errorId, invalid, editing 
           <ul
             id={listId}
             role="listbox"
-            className="absolute z-10 mt-1 max-h-60 w-full overflow-y-auto rounded-lg bg-white py-1 text-lg text-ink shadow-popover"
+            className="absolute z-10 mt-1 max-h-60 w-full overflow-y-auto rounded-lg bg-white py-1 text-lg text-[#262627] shadow-popover"
           >
-            {matches.length === 0 && <li className="px-4 py-2 text-ink-muted">No matching options</li>}
+            {matches.length === 0 && <li className="px-4 py-2 text-[#6b6b6f]">No matching options</li>}
             {matches.map((option, index) => (
               <li
                 key={option.id}
@@ -96,7 +96,7 @@ export function Dropdown({ question, value, onChange, errorId, invalid, editing 
                   choose(option.id);
                 }}
                 onMouseEnter={() => setHighlighted(index)}
-                className={cn("cursor-pointer px-4 py-2", index === highlighted && "bg-surface-strong", option.id === value && "font-semibold")}
+                className={cn("cursor-pointer px-4 py-2", index === highlighted && "bg-[#ededed]", option.id === value && "font-semibold")}
               >
                 {option.label}
               </li>

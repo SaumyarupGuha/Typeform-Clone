@@ -53,7 +53,7 @@ export function QuestionSidebar({ onAdd, view, onViewChange }: QuestionSidebarPr
           type="button"
           onClick={onAdd}
           aria-label="Add question"
-          className="flex size-8 items-center justify-center rounded-control border border-line bg-white hover:bg-surface-strong"
+          className="flex size-8 items-center justify-center rounded-control border border-line bg-card hover:bg-surface-strong"
         >
           <Plus className="size-4" />
         </button>
@@ -97,7 +97,7 @@ export function QuestionSidebar({ onAdd, view, onViewChange }: QuestionSidebarPr
                 aria-current={view === target}
                 className={cn(
                   "flex w-full items-center gap-3 rounded-control px-3 py-2 text-left text-sm",
-                  view === target ? "bg-white shadow-[0_0_0_2px_var(--color-ink)]" : "hover:bg-white/70",
+                  view === target ? "bg-card shadow-[0_0_0_2px_var(--color-ink)]" : "hover:bg-card/70",
                 )}
               >
                 <Icon className="size-4 shrink-0 text-ink-muted" aria-hidden />

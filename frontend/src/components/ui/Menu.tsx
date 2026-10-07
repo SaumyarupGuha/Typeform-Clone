@@ -70,7 +70,7 @@ export function Menu({ label, trigger, items, align = "right", triggerClassName 
           role="menu"
           onKeyDown={onMenuKeyDown}
           className={cn(
-            "absolute top-full z-40 mt-1 min-w-48 rounded-control bg-white py-1 shadow-popover",
+            "absolute top-full z-40 mt-1 min-w-48 rounded-control bg-card py-1 shadow-popover",
             align === "right" ? "right-0" : "left-0",
           )}
         >

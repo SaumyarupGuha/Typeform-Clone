@@ -14,7 +14,7 @@ export function PanelFrame({ title, description, status, children }: PanelFrameP
   return (
     <section
       aria-label={title}
-      className="min-h-0 overflow-y-auto rounded-panel bg-white p-6 shadow-[0_0_0_1px_var(--color-line)] sm:p-10"
+      className="min-h-0 overflow-y-auto rounded-panel bg-card p-6 shadow-[0_0_0_1px_var(--color-line)] sm:p-10"
     >
       <div className="mx-auto max-w-2xl">
         <div className="flex items-center justify-between gap-4">

@@ -81,8 +81,10 @@ export function Modal({ open, onClose, title, children, className, placement = "
               if (!dialogRef.current?.contains(document.activeElement)) dialogRef.current?.focus();
             }}
             className={cn(
-              "relative w-full bg-white p-6 shadow-modal outline-none",
-              isDrawer ? "h-full max-w-lg overflow-y-auto rounded-l-panel" : "max-w-md rounded-panel",
+              "relative w-full bg-card p-6 shadow-modal outline-none",
+              isDrawer
+                ? "h-full max-w-lg overflow-y-auto rounded-l-panel"
+                : "max-h-[calc(100dvh-2rem)] max-w-md overflow-y-auto rounded-panel", // long dialogs scroll inside the screen
               className,
             )}
             initial={isDrawer ? { x: "100%" } : { opacity: 0, y: 12, scale: 0.98 }}

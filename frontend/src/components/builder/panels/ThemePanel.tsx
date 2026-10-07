@@ -36,7 +36,7 @@ export function ThemePanel({ editor }: { editor: AutosavedSettings }) {
                 <span className="block text-sm text-[var(--r-accent)]">Answer</span>
                 <span className="mt-2 block h-3 w-8 rounded-sm bg-[var(--r-accent)]" />
               </span>
-              <span className="flex items-center justify-between bg-white px-3 py-2 text-sm">
+              <span className="flex items-center justify-between bg-card px-3 py-2 text-sm">
                 {preset.name}
                 {selected && <Check className="size-4" aria-label="Selected" />}
               </span>
@@ -84,7 +84,7 @@ function ColorField({ label, value, onChange }: { label: string; value: string; 
   return (
     <label className="block">
       <SettingLabel>{label}</SettingLabel>
-      <span className="flex h-10 items-center gap-3 rounded-control border border-line bg-white px-2">
+      <span className="flex h-10 items-center gap-3 rounded-control border border-line bg-card px-2">
         <input
           type="color"
           value={value}

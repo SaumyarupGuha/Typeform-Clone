@@ -20,6 +20,14 @@ A full-stack clone of [Typeform](https://www.typeform.com): build a form in a dr
 | --- | --- |
 | ![Summary](docs/screenshots/results-summary.png) | ![Responses](docs/screenshots/results-responses.png) |
 
+| Logic jumps | File upload question |
+| --- | --- |
+| ![Logic editor](docs/screenshots/logic-editor.png) | ![File upload](docs/screenshots/file-upload.png) |
+
+| Partial responses and drop-off | Dark mode |
+| --- | --- |
+| ![Drop-off](docs/screenshots/drop-off.png) | ![Dark mode](docs/screenshots/dark-mode.png) |
+
 ## Contents
 
 1. [Features](#features) · 2. [Tech stack](#tech-stack) · 3. [Local setup](#local-setup) · 4. [Architecture](#architecture) · 5. [Database schema](#database-schema) · 6. [API overview](#api-overview) · 7. [Feature checklist](#feature-checklist) · 8. [Assumptions](#assumptions) · 9. [Testing](#testing) · 10. [Deployment](#deployment) · 11. [What I would do next](#what-i-would-do-next)
@@ -28,13 +36,17 @@ A full-stack clone of [Typeform](https://www.typeform.com): build a form in a dr
 
 - **Respondent flow** (`/to/<slug>`, no login): one question at a time, full screen, vertical slide transitions, progress bar, inline errors with a shake, thank-you screen, welcome and "form closed" screens, answers kept across a refresh, and a mobile layout.
 - **Keyboard first**: `Enter` or `↓` next, `↑` back, letters pick choices, `Y`/`N` for yes/no, digits for ratings, `Shift+Enter` for a line break; single-choice, dropdown, yes/no and rating auto-advance after a short pause.
-- **Builder**: eight question types, inline editing on a live canvas that uses the very same input components as the respondent flow, drag-and-drop reorder (mouse and keyboard), per-question settings, debounced autosave with a "Saving… / Saved" indicator, duplicate and delete, preview.
+- **Builder**: nine question types (short and long text, email, number, multiple choice, dropdown, yes/no, rating, file upload), inline editing on a live canvas that uses the very same input components as the respondent flow, drag-and-drop reorder (mouse and keyboard), per-question settings, debounced autosave with a "Saving… / Saved" indicator, duplicate and delete, preview.
 - **Workspace**: create, rename, duplicate, delete (with confirmation), copy link, search and status tabs.
 - **Publishing**: publish and unpublish, shareable link, edits to a published form go live immediately.
 - **Results**: completion funnel (views, submissions, completion rate, average time), per-question summaries, a paginated responses table, a response drawer with delete, and CSV export.
 - **Settings**: 8 theme presets plus custom colours and font, editable thank-you and welcome screens.
 - **Validation twice, one rule set**: the browser (zod) and the server (Python validators) apply the same rules and messages per question type; the server is the authority and answers `422` with per-question errors.
-- **Placeholders** ("Coming soon"): logic jumps, integrations and webhooks, team sharing, file-upload and payment question types.
+- **Logic jumps**: a "Logic +" row on every question opens a rule editor ("if *this answer* then jump to *that question* or the end", with all/any conditions and an "all other cases" fallback). The browser and the server walk the form with the same evaluator, so a required question that a jump skips never blocks a submit, and the progress bar follows the route actually taken.
+- **Partial responses**: answers are saved as a respondent moves through the form (and when the tab is hidden), so someone who leaves part-way is still recorded. Results show Views / Submissions / **Partial** / Completion rate, a "where respondents drop off" funnel, a Completed / Partial / All filter and a CSV option that includes partial responses.
+- **File upload questions**: drag-and-drop or choose a file, with progress, replace and remove. The creator picks the allowed kind (images, documents, audio and video, or any) and a size limit (up to 25 MB); programs such as `.exe` are never accepted. Files are stored on the backend volume with random names and only the form's owner can download them (as attachments).
+- **Dark mode** for the creator app: Light, Dark or follow the system, remembered per browser and applied before first paint (no flash). Respondent pages always use the form's own theme.
+- **Placeholders** ("Coming soon"): integrations and webhooks, team sharing, and the payment question type.
 
 ## Tech stack
 
@@ -51,7 +63,7 @@ A full-stack clone of [Typeform](https://www.typeform.com): build a form in a dr
 | Backend | FastAPI + Uvicorn | OpenAPI docs at `/docs` |
 | ORM / schemas | SQLAlchemy 2.0, Pydantic v2 (+ email-validator) | Typed models and request/response contracts |
 | Database | SQLite | Required; one file, on a volume in production |
-| Tests | pytest + FastAPI `TestClient` | 54 tests |
+| Tests | pytest + FastAPI `TestClient` | 136 tests |
 | Hosting | Vercel (frontend), Railway with a volume (backend) | |
 
 The font is **Inter**: Typeform's own typeface is proprietary, so I used the closest free geometric sans. Everything is written from scratch; no code was copied from existing Typeform clones.
@@ -88,6 +100,7 @@ Open **http://localhost:3000** (not `127.0.0.1:3000`; CORS allows `localhost:300
 | --- | --- | --- | --- |
 | `backend/.env` | `DATABASE_URL` | `sqlite:///./typeform.db` | SQLite file; `sqlite:////data/typeform.db` on Railway |
 | `backend/.env` | `FRONTEND_ORIGIN` | `http://localhost:3000,http://127.0.0.1:3000` | Comma-separated CORS origins; the first one builds public links |
+| `backend/.env` | `UPLOAD_DIR` | `./uploads` | Folder for files respondents upload; `/data/uploads` on Railway |
 | `frontend/.env.local` | `NEXT_PUBLIC_API_URL` | `http://127.0.0.1:8000` | Base URL of the API |
 
 > Use `127.0.0.1`, not `localhost`, for the API on Windows: Node resolves `localhost` to IPv6 first, where uvicorn is not listening, which breaks server-side fetches.
@@ -95,7 +108,7 @@ Open **http://localhost:3000** (not `127.0.0.1:3000`; CORS allows `localhost:300
 **Checks**
 
 ```bash
-cd backend && python -m pytest          # 54 tests
+cd backend && python -m pytest          # 136 tests
 cd frontend && npm run lint && npm run build
 ```
 
@@ -105,9 +118,9 @@ cd frontend && npm run lint && npm run build
 | --- | --- | --- | --- |
 | Customer Satisfaction Survey | Published | Name, email, rating (5), single choice, multiple choice, dropdown, yes/no, number, long text | 40 completed + 8 in progress |
 | Event Registration | Published | Name, email, dropdown, number (guests), yes/no, long text | 15 completed |
-| Product Research | Draft | Short text, multiple choice, rating | none |
+| Product Research | Draft | Short text, multiple choice, rating, file upload | none |
 
-Answers come from a fixed `random.seed(42)` with weighted choices, spread over the last 30 days, so the summary charts look realistic and are repeatable.
+Two forms show off logic jumps: in the survey a rating of 2 or less jumps straight to the open question, and in the registration form "no dietary requirements" jumps to the end. The seeded responses follow those routes, and the 8 in-progress responses of the survey hold the answers given before they left. Answers come from a fixed `random.seed(42)` with weighted choices, spread over the last 30 days, so the summary charts look realistic and are repeatable.
 
 ## Architecture
 
@@ -132,14 +145,14 @@ flowchart LR
 
 | Frontend `lib/questionTypes.tsx` | Backend `app/question_types/` |
 | --- | --- |
-| label, icon, colour, default properties | `default_properties`, `has_options` |
+| label, icon, colour, default properties, `logicKind` | `default_properties`, `has_options`, `logic_kind` |
 | `Input` (used by the runner **and** the builder canvas) | n/a |
 | `Settings` (builder settings panel) | `validate_properties` |
 | `schema` (zod) and `isEmpty` | `validate` and `is_empty` |
 | `Summary` (results view) | `stats` |
-| `autoAdvance`, `answerForKey` (keyboard) | `to_columns`, `display_value` |
+| `autoAdvance`, `answerForKey` (keyboard) | `to_columns`, `display_value`, and hooks for types that point at stored data (files) |
 
-Adding a type means adding one entry per side. There is no `if type == ...` branching in the routes, services or screens.
+Logic jumps work the same way: a type only declares its `logic_kind` (text, number, choice, boolean or file) and gets the right operators on both sides. Adding a type means adding one entry per side. There is no `if type == ...` branching in the routes, services or screens.
 
 **One request, end to end (submit).**
 
@@ -163,13 +176,13 @@ typeform-clone/
 │   ├── app/
 │   │   ├── main.py               app factory, CORS, routers, create tables and seed on startup
 │   │   ├── seed.py               demo data (also `python -m app.seed [--reset]`)
-│   │   ├── core/                 config · database (FK pragma) · deps (get_current_user) · errors
-│   │   ├── models/               user · form · question (+options) · response · answer (+answer_options)
+│   │   ├── core/                 config · database (FK pragma) · migrations · deps (get_current_user) · errors
+│   │   ├── models/               user · form · question (+options) · response · answer (+answer_options) · file
 │   │   ├── schemas/              Pydantic request/response models
 │   │   ├── routes/               forms · questions · responses · public
-│   │   ├── services/             form · question · response · summary · export
+│   │   ├── services/             form · question · response · logic · file · summary · export
 │   │   └── question_types/       one handler per type + registry.py
-│   ├── tests/                    forms · submit validation · results · config
+│   ├── tests/                    forms · submit validation · results · logic · partial · files · migrations · config
 │   ├── requirements.txt · railway.json · .env.example
 └── frontend/
     └── src/
@@ -178,16 +191,16 @@ typeform-clone/
         │   ├── ui/               Button · Modal · ConfirmDialog · Toggle · Menu · Tabs · Skeleton · ComingSoon
         │   ├── workspace/        FormCard · CreateFormModal · RenameModal · skeleton
         │   ├── forms/            FormShell (top bar) · TitleEditor · PublishControl
-        │   ├── builder/          sidebar · canvas · settings panel · TypeSettings/ · panels/ (design, thank-you, welcome)
+        │   ├── builder/          sidebar · canvas · settings panel · TypeSettings/ · logic/ (rule editor) · panels/ (design, thank-you, welcome)
         │   ├── runner/           FormRunner · reducer · screens · inputs/ (the 8 inputs)
         │   └── results/          summary cards · summaries/ · responses table · drawer
-        ├── lib/                  api · types · questionTypes (registry) · validation · keyboard · queries · theme
+        ├── lib/                  api · types · questionTypes (registry) · validation · logic · keyboard · queries · theme · colorScheme
         └── store/                builderStore (Zustand)
 ```
 
 ## Database schema
 
-Seven tables. Options and answers are normalised so summary stats are plain `GROUP BY` queries and renaming an option never breaks historic responses.
+Eight tables (the seven of the original design plus `files`). Options and answers are normalised so summary stats are plain `GROUP BY` queries and renaming an option never breaks historic responses.
 
 ```mermaid
 erDiagram
@@ -199,6 +212,8 @@ erDiagram
     questions ||--o{ answers : "answered by"
     answers ||--o{ answer_options : selects
     question_options ||--o{ answer_options : "chosen as"
+    responses ||--o{ files : uploads
+    answers ||--o| files : "points at"
 ```
 
 The DDL below is generated from the SQLAlchemy models (`Base.metadata`), so it is exactly what runs:
@@ -277,9 +292,23 @@ CREATE TABLE answer_options (                      -- multiple_choice (1..n) and
   FOREIGN KEY(option_id) REFERENCES question_options (id)
 );
 CREATE INDEX ix_answer_options_option ON answer_options (option_id);
+
+CREATE TABLE files (                               -- uploads for file_upload questions; the bytes are on disk
+  id INTEGER NOT NULL, response_id INTEGER NOT NULL, question_id INTEGER NOT NULL,
+  answer_id INTEGER,                               -- filled in when the answer is saved
+  original_name TEXT NOT NULL, content_type TEXT NOT NULL, size_bytes INTEGER NOT NULL,
+  storage_key TEXT NOT NULL,                       -- random name inside the upload folder
+  created_at DATETIME NOT NULL,
+  PRIMARY KEY (id), UNIQUE (response_id, question_id),
+  FOREIGN KEY(response_id) REFERENCES responses (id) ON DELETE CASCADE,
+  FOREIGN KEY(question_id) REFERENCES questions (id),
+  FOREIGN KEY(answer_id) REFERENCES answers (id) ON DELETE SET NULL,
+  UNIQUE (storage_key)
+);
+CREATE INDEX ix_files_response ON files (response_id);
 ```
 
-`questions.properties` holds type-specific settings: `placeholder` and `max_length` (text), `allow_multiple` / `randomize` / `vertical` (multiple choice), `placeholder` / `alphabetical` (dropdown), `min` / `max` (number), `steps` and `shape` (rating). `forms.settings` holds `theme` (`primary`, `background`, `font`), `welcome_screen` and `thank_you_screen`.
+`questions.properties` also holds the question's logic-jump rules under a reserved `logic` key (rules are plain JSON, so branching needed no schema change). It holds type-specific settings: `placeholder` and `max_length` (text), `allow_multiple` / `randomize` / `vertical` (multiple choice), `placeholder` / `alphabetical` (dropdown), `min` / `max` (number), `steps` and `shape` (rating), `max_size_mb` and `allowed_types` (file upload). `forms.settings` holds `theme` (`primary`, `background`, `font`), `welcome_screen` and `thank_you_screen`.
 
 **Design decisions**
 
@@ -289,6 +318,8 @@ CREATE INDEX ix_answer_options_option ON answer_options (option_id);
 - **`responses.status` and `started_at`.** A response is created when the respondent first interacts, so completion rate (completed / started) comes for free. Answers are only written on a successful submit.
 - **`slug` separate from `id`.** Public URLs never expose sequential ids.
 - **Foreign keys on.** SQLite needs `PRAGMA foreign_keys=ON` per connection; it is set in a SQLAlchemy `connect` listener, so `ON DELETE CASCADE` really cascades. Form and response deletes are single bulk `DELETE` statements so the database does the cascading.
+- **Partial answers are real rows.** Progress is saved into the same `answers` table while the response is still `in_progress`, and a submit simply replaces them. Statistics and the workspace count only ever read `completed` responses.
+- **Files are a table plus bytes on disk.** `files` links an upload to its response, question and (once saved) answer; the file itself lives under `UPLOAD_DIR` with a random name, so a respondent's file name never decides a path. Deleting a response or form deletes its files from disk too.
 - **Position, not a linked list.** Reorder rewrites `position` for the whole form in one transaction.
 - **Timestamps** are stored as naive UTC and serialised with an explicit `+00:00`.
 
@@ -311,7 +342,7 @@ Interactive docs live at `/docs`. Every error uses one shape: `{"detail": {"code
 | Method | Path | Purpose |
 | --- | --- | --- |
 | POST | `/api/forms/{id}/questions` | Add at a position; type defaults and starter options |
-| PATCH | `/api/questions/{qid}` | Edit; `options` is diffed (keep, rename, add, delete) |
+| PATCH | `/api/questions/{qid}` | Edit; `options` is diffed (keep, rename, add, delete); `logic` replaces the question's jump rules after validation |
 | DELETE | `/api/questions/{qid}` | Hard delete, or soft delete if it has answers |
 | POST | `/api/questions/{qid}/duplicate` | Copy inserted below |
 | PUT | `/api/forms/{id}/questions/order` | Reorder; must list every live question exactly once |
@@ -320,10 +351,11 @@ Interactive docs live at `/docs`. Every error uses one shape: `{"detail": {"code
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/api/forms/{id}/responses?page=&limit=` | Completed responses, newest first, plus the table's columns |
+| GET | `/api/forms/{id}/responses?page=&limit=&status=` | Responses newest first (`status` is `completed` (default), `partial` or `all`), counts for each, plus the table's columns |
 | GET / DELETE | `/api/forms/{id}/responses/{rid}` | One response with every question and answer, or delete it |
-| GET | `/api/forms/{id}/summary` | Views, submissions, completion rate, average time, per-question stats |
-| GET | `/api/forms/{id}/responses/export.csv` | CSV (formula-injection safe) |
+| GET | `/api/forms/{id}/summary` | Views, submissions, partial, completion rate, average time, drop-off funnel, per-question stats |
+| GET | `/api/forms/{id}/responses/export.csv?status=` | CSV (formula-injection safe); `status=all` adds partial responses and a Status column |
+| GET | `/api/forms/{id}/files/{file_id}` | Download a respondent's file (owner only, always as an attachment) |
 
 **Public** (no auth; published forms only)
 
@@ -331,9 +363,11 @@ Interactive docs live at `/docs`. Every error uses one shape: `{"detail": {"code
 | --- | --- | --- |
 | GET | `/api/public/forms/{slug}` | Sanitised definition; 404 for drafts |
 | POST | `/api/public/forms/{slug}/responses` | Start a response, returns a `token` |
+| PUT | `/api/public/forms/{slug}/responses/{token}/progress` | Save the answers given so far (never complains; invalid or half-typed answers are skipped); `204` |
+| PUT | `/api/public/forms/{slug}/responses/{token}/files/{question_id}` | Upload the file for a file question (raw body, name in `X-File-Name`); `413` if too large, `422` if not allowed |
 | POST | `/api/public/forms/{slug}/responses/{token}/submit` | Validate and store; `422` with per-question errors |
 
-**Server validation** (on submit, in one transaction): the form is published; the token belongs to the form and is still `in_progress` (blocks double submit); every answered question is a live question of the form; required questions are non-empty; and the type's validator passes (email syntax, numeric range, integer rating within `steps`, option ids belonging to the question, single-select has exactly one option, text under `max_length`).
+**Server validation** (on submit, in one transaction): the form is published; the token belongs to the form and is still `in_progress` (blocks double submit); every answered question is a live question of the form; required questions are non-empty; only questions on the respondent's route count (a logic jump can skip a required question, and answers to skipped questions are ignored); and the type's validator passes (email syntax, numeric range, integer rating within `steps`, option ids belonging to the question, single-select has exactly one option, text under `max_length`).
 
 ## Feature checklist
 
@@ -348,10 +382,12 @@ Interactive docs live at `/docs`. Every error uses one shape: `{"detail": {"code
 | Responses table, individual response view, per-question summary stats | Done |
 | Typeform look and feel, modals, inline editing, toasts, settings placeholders | Done |
 | Seed data: published forms with responses | Done |
-| Bonus: CSV export, completion rate (views vs submissions, with in-progress responses tracked), custom themes | Done |
-| Bonus: dark theme | Partial: the "Inky Black" and "Midnight" form themes; the creator app has no dark mode |
-| Bonus: logic jumps, file upload | Not done: "Coming soon" placeholders (as the brief allows) |
-| Placeholders: integrations, team sharing, payments, file upload, advanced logic | "Coming soon" panels |
+| Bonus: CSV export, custom themes | Done |
+| Bonus: partial-response tracking and completion rate | Done: answers are saved as respondents go; Partial stat, drop-off funnel, Partial filter |
+| Bonus: dark mode | Done: creator app (Light / Dark / System) and dark form themes |
+| Bonus: logic jumps / conditional branching | Done: rule editor, all/any conditions, jump to a question or the end, "all other cases" |
+| Bonus: file-upload question type | Done |
+| Placeholders: integrations, team sharing, payments | "Coming soon" panels |
 | Real creator authentication | Simplified: one seeded default creator behind `get_current_user` |
 
 ## Assumptions
@@ -359,6 +395,8 @@ Interactive docs live at `/docs`. Every error uses one shape: `{"detail": {"code
 - **A single default creator.** There is no sign-up or login; the seeded creator is injected by one dependency (`get_current_user`), the single place to swap in real auth.
 - **Edits to a published form go live immediately** (there are no versioned snapshots); the top bar shows "Live" so the creator knows.
 - **A "view" is a started response**, created when the respondent first interacts, not at page load.
+- **Logic only jumps forward**, and a condition may only look at the current or an earlier question, so a form can never loop. A jump to "the end" goes to the thank-you screen (there is a single ending). If a reorder leaves a backward jump, it is ignored when answering and flagged in the editor.
+- **Uploaded files are kept** until their response (or form) is deleted, including files from respondents who never submit; there is no automatic retention policy or virus scanning.
 - **Progress** is questions passed divided by total, as in Typeform; skipping an optional question still moves it.
 - **Option and type changes are protected.** Removing an answered option, or changing the type of an answered question, returns `409`, since mixed historic data would be meaningless.
 - **Substitute font.** Inter instead of Typeform's proprietary typeface.
@@ -367,9 +405,9 @@ Interactive docs live at `/docs`. Every error uses one shape: `{"detail": {"code
 
 ## Testing
 
-- **Backend:** `cd backend && python -m pytest` runs 54 tests: form CRUD and cascades, the options diff, reorder, soft delete, submit validation for every question type (including 422 shape and "nothing saved on error"), double submit, summary statistics, CSV safety, the seed, and configuration.
+- **Backend:** `cd backend && python -m pytest` runs 136 tests: form CRUD and cascades, the options diff, reorder, soft delete, submit validation for every question type (including 422 shape and "nothing saved on error"), double submit, summary statistics, CSV safety, the seed, configuration, logic rules and routes, partial responses and the drop-off funnel, file uploads (limits, allowed types, safe names, ownership, cleanup, downloads) and the schema upgrade for older databases.
 - **Frontend:** `npm run lint` and `npm run build` must be clean (zero errors).
-- **End to end:** each phase was also verified in real Chrome with Playwright (respondent flow, builder, results, settings, responsive sweep at 390, 768 and 1440 px). Those scripts were run from outside the repository so the project carries no extra dependency.
+- **End to end:** each phase was also verified in real Chrome with Playwright (respondent flow, builder, results, settings, logic jumps, partial responses, file upload, dark mode with an automated contrast check of every creator screen in both modes, and a responsive sweep at 390, 768 and 1440 px). Those scripts were run from outside the repository so the project carries no extra dependency.
 
 ## Deployment
 
@@ -377,7 +415,7 @@ Interactive docs live at `/docs`. Every error uses one shape: `{"detail": {"code
 
 1. New project → deploy from this repo, **root directory `backend/`**. `railway.json` sets the start command (`uvicorn app.main:app --host 0.0.0.0 --port $PORT`) and the `/health` check.
 2. Add a **volume** mounted at `/data`.
-3. Set variables: `DATABASE_URL=sqlite:////data/typeform.db` and `FRONTEND_ORIGIN=https://<your-app>.vercel.app` (comma-separate extra origins, such as a preview URL).
+3. Set variables: `DATABASE_URL=sqlite:////data/typeform.db`, `UPLOAD_DIR=/data/uploads` (so uploaded files survive redeploys on the same volume) and `FRONTEND_ORIGIN=https://<your-app>.vercel.app` (comma-separate extra origins, such as a preview URL).
 4. Deploy. On first start the app creates the folder and tables and seeds the demo data. The seed runs only when the database is empty, so redeploys keep real data.
 
 **Frontend on Vercel**
@@ -386,14 +424,16 @@ Interactive docs live at `/docs`. Every error uses one shape: `{"detail": {"code
 2. Set `NEXT_PUBLIC_API_URL=https://<your-api>.up.railway.app`.
 3. Deploy, then put the Vercel URL into the Railway `FRONTEND_ORIGIN` and redeploy the backend (CORS and public links use it).
 
-**Fallback:** a Render free web service also works, but its disk is not persistent. The seed-on-empty startup keeps the demo usable after each restart, but data created in the app is lost, so say so in the demo.
+**Fallback:** a Render free web service also works, but its disk is not persistent. The seed-on-empty startup keeps the demo usable after each restart, but data and uploaded files created in the app are lost, so say so in the demo.
+
+**Upgrading an existing database:** on startup the backend adds the new `files` table and, if the database predates file uploads, rebuilds the `questions` table once so its type constraint accepts `file_upload` (existing data is kept). No manual step is needed.
 
 ## What I would do next
 
 - **Real authentication and multiple creators**: replace `get_current_user`, add per-owner scoping of every query (already filtered by `owner_id`), and workspaces.
-- **Alembic migrations** instead of `create_all`, and Postgres for concurrent writers.
+- **Alembic migrations** instead of `create_all` plus the one hand-written upgrade, and Postgres for concurrent writers.
+- **Object storage for uploads** (S3 or similar) with signed download links, virus scanning and a retention policy for abandoned responses.
 - **Versioned published snapshots**, so editing a live form does not change what is being answered mid-session.
-- **Logic jumps** (conditional branching) and recall (`@field`) in question text.
-- **File-upload questions** with object storage, and webhooks/integrations on submit.
-- **Partial-answer capture** (saving answers as they are given) for richer drop-off analytics, and per-question drop-off charts.
-- **Dark mode** for the creator app and a custom-domain share option.
+- **More of Typeform's logic**: several endings, jumping to a chosen ending, calculations and score-based branching, and recall (`@field`) in question text.
+- **Richer analytics**: time per question, drop-off by device or source, and a funnel that accounts for logic routes.
+- **Integrations and webhooks** on submit, and sharing a form with teammates.

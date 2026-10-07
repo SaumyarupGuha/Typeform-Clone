@@ -33,7 +33,7 @@ export function SettingsPanel() {
       <Menu
         label="Change question type"
         align="left"
-        triggerClassName="flex w-full items-center gap-3 rounded-control border border-line bg-white px-3 py-2 text-left hover:bg-surface-strong"
+        triggerClassName="flex w-full items-center gap-3 rounded-control border border-line bg-card px-3 py-2 text-left hover:bg-surface-strong"
         trigger={
           <>
             <TypeChip type={question.type} />

@@ -30,7 +30,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           unstyled: true,
           classNames: {
             toast:
-              "flex items-center gap-3 rounded-control bg-ink px-4 py-3 text-sm font-medium text-white shadow-popover",
+              "flex items-center gap-3 rounded-control bg-action px-4 py-3 text-sm font-medium text-on-action shadow-popover",
             error: "!bg-danger",
           },
         }}

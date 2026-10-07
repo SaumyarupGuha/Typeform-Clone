@@ -8,7 +8,7 @@ export interface QuestionSettingsProps {
   onChange: (changes: Record<string, JsonValue>) => void;
 }
 
-const FIELD_CLASS = "h-10 w-full rounded-control border border-line bg-white px-3 text-sm outline-none focus:border-ink";
+const FIELD_CLASS = "h-10 w-full rounded-control border border-line bg-card px-3 text-sm outline-none focus:border-ink";
 
 export function SettingLabel({ children }: { children: React.ReactNode }) {
   return <span className="mb-1.5 block text-sm font-medium text-ink-muted">{children}</span>;

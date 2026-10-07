@@ -27,7 +27,7 @@ export function SortableQuestionItem({ question, number, selected, onSelect, onD
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
         "group relative flex items-center gap-1 rounded-control p-1.5",
-        selected ? "bg-white shadow-[0_0_0_2px_var(--color-ink)]" : "hover:bg-white/70",
+        selected ? "bg-card shadow-[0_0_0_2px_var(--color-ink)]" : "hover:bg-card/70",
         isDragging && "z-10 opacity-70 shadow-popover",
       )}
     >

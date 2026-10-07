@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { Providers } from "@/components/Providers";
+import { ThemeSync } from "@/components/ThemeSync";
+import { NO_FLASH_SCRIPT } from "@/lib/noFlashScript";
 import "./globals.css";
 
 // Typeform's own typeface is proprietary; Inter is the closest free geometric sans.
@@ -13,8 +15,13 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={inter.variable}>
+    // suppressHydrationWarning: the script below sets data-theme before React loads.
+    <html lang="en" className={inter.variable} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: NO_FLASH_SCRIPT }} />
+      </head>
       <body>
+        <ThemeSync />
         <Providers>{children}</Providers>
       </body>
     </html>

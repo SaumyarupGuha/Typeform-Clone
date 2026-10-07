@@ -116,9 +116,9 @@ export function ResponsesTable({ formId }: { formId: number }) {
                     onKeyDown={(event) => {
                       if (event.key === "Enter") setOpenId(row.id);
                     }}
-                    className="cursor-pointer border-t border-line hover:bg-surface"
+                    className="group cursor-pointer border-t border-line hover:bg-surface"
                   >
-                    <td className="sticky left-0 whitespace-nowrap bg-inherit px-4 py-3">
+                    <td className="sticky left-0 whitespace-nowrap bg-card px-4 py-3 group-hover:bg-surface">
                       {formatDateTime(row.submitted_at ?? row.started_at)}
                     </td>
                     {showStatus && (

@@ -18,7 +18,7 @@ export function FormCard({ form, onRename, onDuplicate, onDelete }: FormCardProp
   const published = form.status === "published";
 
   return (
-    <li className="flex items-center gap-4 rounded-control bg-white p-3 pr-2 shadow-[0_0_0_1px_var(--color-line)] transition-shadow hover:shadow-popover">
+    <li className="flex items-center gap-4 rounded-control bg-card p-3 pr-2 shadow-[0_0_0_1px_var(--color-line)] transition-shadow hover:shadow-popover">
       <Link href={`/forms/${form.id}/create`} className="flex min-w-0 flex-1 items-center gap-4">
         <span className="flex size-12 shrink-0 items-center justify-center rounded-control bg-surface-strong text-lg font-semibold text-ink-muted">
           {form.title.trim().charAt(0).toUpperCase() || "?"}

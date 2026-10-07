@@ -28,7 +28,7 @@ export function ThankYouEditor({ editor }: { editor: AutosavedSettings }) {
           maxLength={1000}
           rows={3}
           onChange={(event) => setScreen({ description: event.target.value })}
-          className="w-full rounded-control border border-line bg-white px-3 py-2 text-sm outline-none focus:border-ink"
+          className="w-full rounded-control border border-line bg-card px-3 py-2 text-sm outline-none focus:border-ink"
         />
       </label>
 

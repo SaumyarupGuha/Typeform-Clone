@@ -6,9 +6,9 @@ type Variant = "primary" | "cta" | "secondary" | "ghost" | "danger";
 type Size = "sm" | "md" | "lg";
 
 const VARIANT_CLASSES: Record<Variant, string> = {
-  primary: "bg-action text-white hover:bg-action-hover",
+  primary: "bg-action text-on-action hover:bg-action-hover",
   cta: "bg-cta text-white hover:bg-cta-hover",
-  secondary: "border border-line bg-white text-ink hover:bg-surface",
+  secondary: "border border-line bg-card text-ink hover:bg-surface",
   ghost: "text-ink hover:bg-surface-strong",
   danger: "bg-danger text-white hover:opacity-90",
 };

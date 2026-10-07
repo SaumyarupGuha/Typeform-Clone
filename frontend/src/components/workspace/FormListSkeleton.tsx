@@ -5,7 +5,7 @@ export function FormListSkeleton() {
   return (
     <ul className="space-y-2" role="status" aria-label="Loading forms">
       {[0, 1, 2, 3].map((row) => (
-        <li key={row} className="flex items-center gap-4 rounded-control bg-white p-3 shadow-[0_0_0_1px_var(--color-line)]">
+        <li key={row} className="flex items-center gap-4 rounded-control bg-card p-3 shadow-[0_0_0_1px_var(--color-line)]">
           <Skeleton className="size-12 shrink-0" />
           <div className="flex-1 space-y-2">
             <Skeleton className="h-4 w-1/3" />

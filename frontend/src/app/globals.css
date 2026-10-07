@@ -11,7 +11,7 @@
   /* Neutrals */
   --color-ink: #262627;
   --color-ink-muted: #6b6b6f;
-  --color-ink-faint: #a3a3a8;
+  --color-ink-faint: #767680; /* 4.5:1 on white, so hints stay readable */
   --color-page: #ffffff;
   /* Raised surfaces that are white in light mode (cards, inputs, modals). */
   --color-card: #ffffff;
@@ -80,6 +80,40 @@
       transform: translateX(8px);
     }
   }
+}
+
+/*
+ * Dark mode. Every colour in the creator app is a token, so switching modes only has to
+ * redefine the tokens. These win over the @theme defaults because they are not inside a layer.
+ */
+:root {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark; /* native controls (selects, scrollbars, colour pickers) follow */
+
+  --color-page: #131314;
+  --color-card: #232326;
+  --color-surface: #1a1a1c;
+  --color-surface-strong: #2d2d31;
+  --color-line: #38383d;
+
+  --color-ink: #ececee;
+  --color-ink-muted: #a3a3aa;
+  --color-ink-faint: #787880;
+
+  --color-action: #ececee;
+  --color-action-hover: #ffffff;
+  --color-on-action: #17171a;
+
+  --color-danger: #ff8070;
+  --color-danger-soft: #3d201d;
+  --color-success: #4fc7a8;
+  --color-success-soft: #153a30;
+
+  --shadow-popover: 0 8px 30px rgb(0 0 0 / 0.55), 0 0 0 1px rgb(255 255 255 / 0.07);
+  --shadow-modal: 0 20px 60px rgb(0 0 0 / 0.6), 0 0 0 1px rgb(255 255 255 / 0.07);
 }
 
 html {

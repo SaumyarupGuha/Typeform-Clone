@@ -83,7 +83,7 @@ export function WorkspaceView() {
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search forms"
               aria-label="Search forms"
-              className="h-9 w-full rounded-control border border-line bg-white pl-9 pr-3 text-sm outline-none focus:border-ink"
+              className="h-9 w-full rounded-control border border-line bg-card pl-9 pr-3 text-sm outline-none focus:border-ink"
             />
           </label>
         </div>
@@ -92,7 +92,7 @@ export function WorkspaceView() {
           {forms.isPending && <FormListSkeleton />}
 
           {forms.isError && (
-            <div className="rounded-control bg-white p-8 text-center">
+            <div className="rounded-control bg-card p-8 text-center">
               <p className="mb-4 text-ink-muted">{forms.error.message}</p>
               <Button variant="secondary" onClick={() => void forms.refetch()}>
                 Try again
@@ -101,7 +101,7 @@ export function WorkspaceView() {
           )}
 
           {forms.isSuccess && forms.data.length === 0 && (
-            <div className="flex flex-col items-center gap-4 rounded-control bg-white px-6 py-16 text-center">
+            <div className="flex flex-col items-center gap-4 rounded-control bg-card px-6 py-16 text-center">
               <FilePlus2 className="size-10 text-ink-faint" />
               <p className="text-lg font-medium">{isFiltering ? "No forms match your search" : "No forms yet"}</p>
               {!isFiltering && (

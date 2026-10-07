@@ -7,6 +7,7 @@ import { SaveIndicator } from "@/components/builder/SaveIndicator";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { Tabs, type TabItem } from "@/components/ui/Tabs";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { useForm } from "@/lib/queries";
 import { PublishControl } from "./PublishControl";
 import { TitleEditor } from "./TitleEditor";
@@ -66,6 +67,7 @@ export function FormShell({ formId, children }: { formId: number; children: Reac
 
         <div className="flex flex-1 items-center justify-end gap-4">
           <SaveIndicator />
+          <ThemeToggle />
           <PublishControl form={form.data} />
         </div>
       </header>

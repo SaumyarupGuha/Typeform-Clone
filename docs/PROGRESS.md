@@ -380,3 +380,75 @@ Phase 6: empty-state and loading polish, transition timing, focus handling, a re
 - The creator app has no dark mode (form themes include dark ones).
 - Logic jumps, file upload and integrations are "Coming soon" placeholders, as the brief allows.
 - Playwright suites live outside the repo to avoid a dev dependency. The PLAN's QA checklist is documented in this log and the README's Testing section instead.
+
+## Extension: logic jumps, partial responses, file upload, dark mode
+
+Requested after the six phases: check which of the assignment's bonus items were missing and implement them properly, with Typeform's UX. Status at the start:
+
+| Item | Status before | Now |
+| --- | --- | --- |
+| Publish / unpublish with a shareable link | Done | Done |
+| Client and server validation | Done | Done |
+| Logic jumps / conditional branching | Only a "Coming soon" panel | **Done** |
+| Partial-response tracking / completion rate | Completion rate only; no partial data | **Done** |
+| File-upload question type | "Coming soon" | **Done** |
+| Dark mode | Not present (only dark form themes) | **Done** (creator app) |
+
+### 1. Logic jumps
+- **Storage:** rules live in `questions.properties["logic"]` as plain JSON, so the schema did not change. The question API exposes them as a separate `logic` field and hides the key from `properties`.
+- **Model:** a rule is `{match: all|any, conditions: [{question_id, operator, value}], jump_to: question id | "end"}`. A question holds an ordered list of rules plus an `otherwise` target; the first matching rule wins.
+- **Operators come from the type.** Each question type declares one `logic_kind` (text, number, choice, boolean or file) and gets the matching operators on both sides (`question_types/logic.py`, `lib/logic.ts`). For example "contains" for text, "is greater than" for numbers, "is" for options, and only "is answered" for files.
+- **One evaluator on both sides.** The browser decides which screen comes next and the server decides which questions were on the route. This matters for correctness: a required question skipped by a jump must not block the submit, and an answer given before the respondent changed their mind (and then skipped) must not be stored. `compute_path` is used by submit, progress and the seed.
+- **Forward only.** A jump may only go to a later question or the end, and a condition may only use the current or an earlier question, so a form can never loop. The server validates this when rules are saved, with a message per problem. If a later reorder leaves a backward jump, it is ignored when answering and shown as a problem in the editor.
+- **Builder UX** (`components/builder/logic/`): a "Logic +" row at the bottom of the settings panel (as in Typeform), a short summary of the rules, a branch icon on questions that have logic, and a modal rule editor with all/any conditions, "Jump to" and "All other cases".
+- **Runner:** keeps a `history` of passed questions, so Back returns to where the respondent really came from. Progress is "questions passed over the length of the current route", and the last question on the route says Submit.
+- **Keeping rules valid:** deleting a question prunes the rules that use it (server and store). Duplicating a form remaps question and option ids inside rules to the copies (number values are left alone).
+- **Safety on save:** the store sends `logic` only when it was edited, so an unrelated edit (a title) can never be rejected because of a rule elsewhere.
+- **Seed:** the survey sends ratings of 2 or less to the open question; the registration form jumps to the end when there are no dietary needs. Seeded responses follow those routes.
+
+### 2. Partial responses
+- **Saving as they go:** the runner calls `PUT .../progress` each time a respondent advances, and again (with `keepalive`) when the tab is hidden, so a half-typed but valid answer is kept. The endpoint never complains: required questions may still be open and invalid or half-typed values are skipped. Each call replaces the previous one, and a submit does the same, so there are never duplicate answers.
+- **Results:** Summary gains a Partial stat, a "Where respondents drop off" card (answers per question and how many left right after it) and a note about people who left before answering anything. The Responses tab has a Completed / Partial / All filter with counts, a Status column, and a drawer that says where a partial respondent stopped. CSV can include partial responses (adds a Status column). Question statistics and the workspace response count still use completed responses only.
+- **No schema change:** a partial answer is an ordinary `answers` row of an `in_progress` response.
+
+### 3. File upload
+- **Respondent UX:** a dashed dropzone ("Drag and drop a file here or choose a file", with the limits shown), upload progress, then a file card with Replace and remove. Wrong kind, too large and empty files are refused before uploading, and the server enforces the same rules. While a file is uploading, "next" asks the respondent to wait instead of losing the file.
+- **Creator UX:** File Upload is in the add-question modal, with settings for allowed files (any, images, documents, audio and video) and the maximum size (1 to 25 MB). In the builder and in Preview a chosen file is only shown; nothing is uploaded.
+- **Backend:** the raw file is the body of `PUT .../files/{question_id}` (no multipart dependency), read with a size limit. Files are stored under `UPLOAD_DIR` with random names. Programs (`.exe`, `.sh` and similar) are always refused; client file names are cleaned so they cannot escape the folder; a second upload for the same question replaces the first and removes the old bytes.
+- **Access:** only the form's owner can download a file (`GET /api/forms/{id}/files/{file_id}`), always as an attachment with `nosniff`, never rendered inline.
+- **Cleanup:** deleting a response or a form removes its files from disk (after the database rows are gone). A question with uploaded files is soft-deleted rather than hard-deleted.
+- **Data model:** the only schema addition is a `files` table (created automatically by `create_all`). Older databases are upgraded once at startup by `core/migrations.py`, which rebuilds the `questions` table so its type constraint accepts `file_upload`. This is tested against a database with the old constraint and keeps existing rows.
+- **Results:** a summary card (count, total size, latest names), the file name in the table and CSV, and a download link in the drawer.
+
+### 4. Dark mode
+- **Switcher:** an Appearance menu (Light, Dark, System) in the workspace and builder headers. The choice is stored in `localStorage` and "System" follows the operating system live. A small inline script sets `data-theme` before first paint, so there is no white flash.
+- **How it works:** every creator colour was already a token, so dark mode redefines the tokens under `data-theme="dark"`. I added `card` and `on-action` tokens and replaced the remaining hard-coded `bg-white` and `text-white` in the creator UI. Native controls follow through `color-scheme`.
+- **Respondent pages stay light**, and the builder canvas keeps the form's own theme, because a form is styled by its creator and not by the app's mode. The few runner pieces that sit on the form theme (dropdown list, error pill, "Powered by") use fixed colours.
+- **Accessibility finding:** an automated contrast sweep (every visible text element on every creator screen, in both modes) found that the light-mode "faint" text colour was only 2.5:1 on white. It is now 4.5:1, which fixes hint text everywhere.
+
+### Bugs found and fixed along the way
+- The Logic dialog was taller than the screen and clipped its title. Dialogs now scroll inside the viewport.
+- The "System" appearance did not react live to an operating-system change until `ThemeSync` listened to the media query directly.
+- The sticky first column of the responses table had a transparent background, so scrolled cells showed through it.
+- The builder's question-number badge used the app colour on the form-themed canvas (pale on pale in dark mode). It now uses the form's colours.
+- Remapping option ids when duplicating a form must only touch conditions on choice questions, otherwise a number that happens to equal an option id would be rewritten. There is a test for it.
+- The color-scheme code was first imported by the server-rendered root layout, which the build rejected (a React hook in a server component). The pre-paint script now lives in its own hook-free module.
+
+### Verification
+- Backend `pytest`: **136 passed** (was 54): logic evaluator and rules, partial responses and funnel, file uploads, and the schema upgrade.
+- `npm run lint`: 0 problems. `npm run build`: success.
+- Real-Chrome end-to-end suites, each on a freshly seeded database:
+  - results and settings: 32/32
+  - respondent flow: 23/23
+  - builder: 27/27
+  - logic jumps: 22/22
+  - partial responses: 18/18
+  - file upload: 25/25
+  - dark mode, including the contrast sweep: 26/26
+  - PLAN QA checklist: 17/17
+  - responsive sweep: no horizontal overflow at 390, 768 and 1440 px
+
+### Limitations
+- A single ending (the thank-you screen): "jump to the end" goes there. Several endings are not built.
+- Uploads are kept on the backend disk (a volume on Railway). Abandoned uploads stay until their response is deleted, and there is no virus scanning.
+- A file question cannot change type once it has answers (the same rule as the other types).

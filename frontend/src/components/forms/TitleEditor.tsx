@@ -33,7 +33,7 @@ export function TitleEditor({ formId, title }: { formId: number; title: string }
           event.currentTarget.blur();
         }
       }}
-      className="h-9 w-40 truncate rounded-control bg-transparent px-2 font-medium outline-none hover:bg-surface-strong focus:bg-white focus:shadow-[0_0_0_2px_var(--color-ink)] sm:w-64"
+      className="h-9 w-40 truncate rounded-control bg-transparent px-2 font-medium outline-none hover:bg-surface-strong focus:bg-card focus:shadow-[0_0_0_2px_var(--color-ink)] sm:w-64"
     />
   );
 }

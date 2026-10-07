@@ -76,7 +76,7 @@ function CanvasQuestion({ question, number }: { question: Question; number: numb
   return (
     <div className="mx-auto max-w-2xl px-6 py-14 sm:px-10">
       <div className="flex gap-2">
-        <span className="mt-2 flex size-6 shrink-0 items-center justify-center rounded bg-ink text-xs font-semibold text-white">
+        <span className="mt-2 flex size-6 shrink-0 items-center justify-center rounded bg-[var(--r-fg)] text-xs font-semibold text-[var(--r-bg)]">
           {number}
         </span>
         <div className="min-w-0 flex-1">

@@ -36,7 +36,7 @@ export default function SharePage() {
     <div className="min-h-[calc(100dvh-92px)] rounded-panel bg-surface px-4 py-12 sm:px-8">
       <h1 className="text-center text-3xl">Choose how you&apos;d like to share your form</h1>
 
-      <div className="mx-auto mt-10 max-w-2xl rounded-panel bg-white p-6">
+      <div className="mx-auto mt-10 max-w-2xl rounded-panel bg-card p-6">
         <div className="flex flex-col gap-3 sm:flex-row">
           <Button onClick={() => void copyLink(url)} disabled={!published} className="shrink-0">
             <Copy className="size-4" />
@@ -86,7 +86,7 @@ export default function SharePage() {
             { label: "On your website", icon: Globe },
             { label: "In your email", icon: Mail },
           ].map(({ label, icon: Icon }) => (
-            <div key={label} aria-disabled className="flex items-center gap-3 rounded-panel bg-white p-4 text-ink-muted">
+            <div key={label} aria-disabled className="flex items-center gap-3 rounded-panel bg-card p-4 text-ink-muted">
               <Icon className="size-5" />
               <span className="flex-1">{label}</span>
               <ComingSoonBadge />
