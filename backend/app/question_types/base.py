@@ -32,6 +32,8 @@ class QuestionTypeHandler(ABC):
     name: str
     default_properties: Properties
     has_options: bool = False
+    # Picks the operators available in logic jumps (see question_types/logic.py).
+    logic_kind: str
 
     def is_empty(self, value: JsonValue) -> bool:
         """True when the respondent gave no answer. False (yes/no) and 0 are real answers."""

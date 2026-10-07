@@ -9,6 +9,7 @@ import argparse
 import random
 from dataclasses import dataclass, field
 from datetime import timedelta
+from typing import Any
 
 from pydantic import JsonValue
 from sqlalchemy import func, select
@@ -26,6 +27,7 @@ from app.models.user import User
 from app.question_types import QUESTION_TYPES
 from app.question_types.base import Properties
 from app.schemas.form import FormSettings, ThankYouScreen
+from app.services import logic_service
 from app.services.form_service import generate_slug
 
 RANDOM_SEED = 42
@@ -68,6 +70,8 @@ class QuestionSpec:
     number_range: tuple[int, int] = (1, 10)
     yes_probability: float = 0.5
     skip_probability: float = 0.0  # chance an optional question is left blank
+    # Logic jumps written with question positions: {"rules": [{"if": [(position, operator, value)], "jump_to": position | "end"}]}
+    logic: dict[str, Any] | None = None
 
 
 CSAT_QUESTIONS = [
@@ -76,6 +80,8 @@ CSAT_QUESTIONS = [
     QuestionSpec(
         "rating", "How would you rate your overall experience?", required=True,
         properties={"steps": 5}, weights=[3, 5, 12, 35, 45],
+        # Unhappy customers go straight to the open question instead of the product questions.
+        logic={"rules": [{"if": [(2, "less_or_equal", 2)], "jump_to": 8}]},
     ),
     QuestionSpec(
         "multiple_choice", "How did you hear about us?", required=True,
@@ -113,7 +119,11 @@ EVENT_QUESTIONS = [
         "number", "How many guests are you bringing?", properties={"min": 0, "max": 5},
         number_range=(0, 3), required=True,
     ),
-    QuestionSpec("yes_no", "Do you have any dietary requirements?", yes_probability=0.3),
+    QuestionSpec(
+        "yes_no", "Do you have any dietary requirements?", yes_probability=0.3,
+        # No requirements: nothing more to ask, finish the form.
+        logic={"rules": [{"if": [(4, "is", False)], "jump_to": "end"}]},
+    ),
     QuestionSpec("long_text", "Tell us more or ask a question", samples=EVENT_NOTES, skip_probability=0.55),
 ]
 
@@ -165,7 +175,31 @@ def _create_form(
     form.questions = [question for _, question in pairs]
     db.add(form)
     db.flush()  # assigns ids to the form, questions and options
+    _apply_logic(pairs)
     return form, pairs
+
+
+def _apply_logic(pairs: list[tuple[QuestionSpec, Question]]) -> None:
+    """Turn the position-based rules of each spec into stored rules that use real question ids."""
+    for spec, question in pairs:
+        if not spec.logic:
+            continue
+
+        def target(position: int | str) -> int | str:
+            return position if position == "end" else pairs[int(position)][1].id
+
+        rules = [
+            {
+                "match": "all",
+                "conditions": [
+                    {"question_id": pairs[position][1].id, "operator": operator, "value": value}
+                    for position, operator, value in rule["if"]
+                ],
+                "jump_to": target(rule["jump_to"]),
+            }
+            for rule in spec.logic["rules"]
+        ]
+        question.properties = {**question.properties, "logic": {"rules": rules, "otherwise": None}}
 
 
 def _generate_value(
@@ -196,6 +230,37 @@ def _generate_value(
     return sorted(chosen)
 
 
+def _answer_along_path(
+    rng: random.Random,
+    pairs: list[tuple[QuestionSpec, Question]],
+    response: Response,
+    person: tuple[str, str],
+    stop_after: int | None,
+) -> None:
+    """Answer questions the way a respondent would: follow the logic jumps, and optionally stop early."""
+    questions = [question for _, question in pairs]
+    answers: dict[int, JsonValue] = {}
+    index: int | None = 0
+    visited = 0
+    while index is not None and (stop_after is None or visited < stop_after):
+        spec, question = pairs[index]
+        if spec.required or rng.random() >= spec.skip_probability:
+            value = _generate_value(rng, spec, question, person)
+            answers[question.id] = value
+            columns = QUESTION_TYPES[spec.type].to_columns(value)
+            response.answers.append(
+                Answer(
+                    question_id=question.id,
+                    text_value=columns.text_value,
+                    number_value=columns.number_value,
+                    boolean_value=columns.boolean_value,
+                    answer_options=[AnswerOption(option_id=oid) for oid in columns.option_ids],
+                )
+            )
+        visited += 1
+        index = logic_service.next_index(questions, index, answers)
+
+
 def _seed_responses(
     db: Session,
     rng: random.Random,
@@ -208,24 +273,15 @@ def _seed_responses(
     for index in range(completed + in_progress):
         started = now - timedelta(days=rng.uniform(0, HISTORY_DAYS), minutes=rng.randint(0, 600))
         response = Response(form_id=form.id, token=f"seed-{form.id}-{index}", started_at=started)
+        full_name = f"{rng.choice(FIRST_NAMES)} {rng.choice(LAST_NAMES)}"
+        person = (full_name, full_name.lower().replace(" ", ".") + "@example.com")
         if index < completed:
             response.status = "completed"
             response.submitted_at = started + timedelta(seconds=rng.randint(45, 420))
-            full_name = f"{rng.choice(FIRST_NAMES)} {rng.choice(LAST_NAMES)}"
-            person = (full_name, full_name.lower().replace(" ", ".") + "@example.com")
-            for spec, question in pairs:
-                if not spec.required and rng.random() < spec.skip_probability:
-                    continue
-                columns = QUESTION_TYPES[spec.type].to_columns(_generate_value(rng, spec, question, person))
-                response.answers.append(
-                    Answer(
-                        question_id=question.id,
-                        text_value=columns.text_value,
-                        number_value=columns.number_value,
-                        boolean_value=columns.boolean_value,
-                        answer_options=[AnswerOption(option_id=oid) for oid in columns.option_ids],
-                    )
-                )
+            _answer_along_path(rng, pairs, response, person, stop_after=None)
+        else:
+            # An abandoned response: the respondent answered the first few questions and left.
+            _answer_along_path(rng, pairs, response, person, stop_after=rng.randint(1, max(1, len(pairs) - 2)))
         db.add(response)
 
 

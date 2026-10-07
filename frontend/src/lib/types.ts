@@ -20,6 +20,43 @@ export interface Option {
   label: string;
 }
 
+// ----- Logic jumps -----
+
+export type LogicOperator =
+  | "is"
+  | "is_not"
+  | "contains"
+  | "not_contains"
+  | "begins_with"
+  | "ends_with"
+  | "greater_than"
+  | "greater_or_equal"
+  | "less_than"
+  | "less_or_equal"
+  | "is_answered"
+  | "is_not_answered";
+
+/** A question id, or "end" for the thank-you screen. */
+export type JumpTarget = number | "end";
+
+export interface LogicCondition {
+  question_id: number;
+  operator: LogicOperator;
+  value: JsonValue;
+}
+
+export interface LogicRule {
+  match: "all" | "any";
+  conditions: LogicCondition[];
+  jump_to: JumpTarget;
+}
+
+export interface LogicConfig {
+  rules: LogicRule[];
+  /** Where to go when no rule matches; null means the next question. */
+  otherwise: JumpTarget | null;
+}
+
 export interface Question {
   id: number;
   position: number;
@@ -30,6 +67,7 @@ export interface Question {
   properties: Record<string, JsonValue>;
   options: Option[];
   deleted: boolean;
+  logic: LogicConfig;
 }
 
 export interface FormTheme {
@@ -96,6 +134,7 @@ export interface QuestionUpdate {
   type?: QuestionType;
   properties?: Record<string, JsonValue>;
   options?: { id?: number; label: string }[];
+  logic?: LogicConfig;
 }
 
 export interface AnswerInput {

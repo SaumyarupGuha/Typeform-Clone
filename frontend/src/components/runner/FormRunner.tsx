@@ -5,6 +5,7 @@ import { useEffect, useReducer, useRef, useState, useSyncExternalStore } from "r
 import { toast } from "sonner";
 import { loadDraft, saveDraft } from "@/lib/draft";
 import { useRunnerHotkeys } from "@/lib/keyboard";
+import { computePath, nextIndex } from "@/lib/logic";
 import { QUESTION_TYPES, validateAnswer } from "@/lib/questionTypes";
 import { themeStyle } from "@/lib/theme";
 import type { JsonValue, PublicForm, Question } from "@/lib/types";
@@ -53,7 +54,6 @@ export function FormRunner({ form, preview = false }: FormRunnerProps) {
 
 function RunnerSession({ form, preview }: Required<FormRunnerProps>) {
   const questions = form.questions;
-  const lastIndex = questions.length - 1;
 
   const [draft] = useState(() => (preview ? null : loadDraft(form.slug)));
   const [state, dispatch] = useReducer(runnerReducer, undefined, () => createInitialState(form, draft));
@@ -65,8 +65,8 @@ function RunnerSession({ form, preview }: Required<FormRunnerProps>) {
   // Keep the draft in sessionStorage so a refresh does not lose progress.
   useEffect(() => {
     if (preview || state.status === "done" || state.status === "closed") return;
-    saveDraft(form.slug, { token: session.getToken(), answers: state.answers, index: state.index });
-  }, [preview, form.slug, session, state.answers, state.index, state.status]);
+    saveDraft(form.slug, { token: session.getToken(), answers: state.answers, index: state.index, history: state.history });
+  }, [preview, form.slug, session, state.answers, state.index, state.history, state.status]);
 
   const isNavigationLocked = () => Date.now() < lockedUntil.current;
 
@@ -101,7 +101,7 @@ function RunnerSession({ form, preview }: Required<FormRunnerProps>) {
         break;
       case "failed":
         toast.error(outcome.message);
-        dispatch({ type: "go", index: state.index, direction: 1 }); // back to answering, same question
+        dispatch({ type: "resume" }); // back to answering, same question
         break;
     }
   }
@@ -119,15 +119,18 @@ function RunnerSession({ form, preview }: Required<FormRunnerProps>) {
     const message = validateAnswer(question, state.answers[question.id]);
     if (message) {
       dispatch({ type: "fail", errors: { [question.id]: message } }); // stay here; the input shakes
-    } else if (state.index < lastIndex) {
-      goTo(state.index + 1, 1);
     } else {
-      void submit();
+      // Logic jumps decide what comes next; null means the route ends here, so submit.
+      const upcoming = nextIndex(questions, state.index, state.answers);
+      if (upcoming === null) void submit();
+      else goTo(upcoming, 1);
     }
   }
 
   function previous() {
-    if (state.status === "answering" && state.index > 0 && !isNavigationLocked()) goTo(state.index - 1, -1);
+    // Back returns to the question we really came from, which a logic jump may have skipped over.
+    const cameFrom = state.history.at(-1);
+    if (state.status === "answering" && cameFrom !== undefined && !isNavigationLocked()) goTo(cameFrom, -1);
   }
 
   // The auto-advance timer fires later, so it must call the newest `next`, not the one it was created with.
@@ -167,11 +170,13 @@ function RunnerSession({ form, preview }: Required<FormRunnerProps>) {
   if (state.status === "closed") return <ClosedScreen />;
 
   const question = questions[state.index];
+  const isLastOnRoute = nextIndex(questions, state.index, state.answers) === null;
+  const routeLength = computePath(questions, state.answers).length;
   const screenKey = state.status === "welcome" ? "welcome" : state.status === "done" ? "done" : `question-${question.id}`;
 
   return (
     <>
-      <ProgressBar percent={progressPercent(state.status, state.index, questions.length)} />
+      <ProgressBar percent={progressPercent(state.status, state.history.length, routeLength)} />
 
       <AnimatePresence mode="popLayout" custom={state.direction}>
         <Screen key={screenKey} direction={state.direction}>
@@ -184,7 +189,7 @@ function RunnerSession({ form, preview }: Required<FormRunnerProps>) {
               value={state.answers[question.id]}
               error={state.errors[question.id]}
               errorTick={state.errorTick}
-              isLast={state.index === lastIndex}
+              isLast={isLastOnRoute}
               submitting={state.status === "submitting"}
               onChange={(value) => changeAnswer(question, value)}
               onNext={next}
@@ -196,8 +201,8 @@ function RunnerSession({ form, preview }: Required<FormRunnerProps>) {
       {(state.status === "answering" || state.status === "submitting") && (
         <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2 sm:bottom-6 sm:right-6">
           <NavArrows
-            canGoBack={state.index > 0}
-            canGoForward={state.index < lastIndex}
+            canGoBack={state.history.length > 0}
+            canGoForward={!isLastOnRoute}
             onPrevious={previous}
             onNext={next}
           />

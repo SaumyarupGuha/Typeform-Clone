@@ -44,9 +44,6 @@ export function BuilderShell({ form }: { form: Form }) {
       {view === "welcome" && <WelcomePanel editor={settingsEditor} />}
       {view === "ending" && <ThankYouEditor editor={settingsEditor} />}
       {view === "theme" && <ThemePanel editor={settingsEditor} />}
-      {view === "logic" && (
-        <ComingSoonPanel title="Logic jumps" description="Show different questions depending on earlier answers. Coming soon." />
-      )}
       {view === "integrations" && (
         <ComingSoonPanel title="Integrations" description="Send responses to your other tools with webhooks. Coming soon." />
       )}

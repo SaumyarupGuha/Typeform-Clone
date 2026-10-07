@@ -2,6 +2,7 @@ import { arrayMove } from "@dnd-kit/sortable";
 import { toast } from "sonner";
 import { create } from "zustand";
 import { api, ApiError } from "@/lib/api";
+import { pruneReferences } from "@/lib/logic";
 import { QUESTION_TYPES } from "@/lib/questionTypes";
 import type { Form, Question, QuestionType, QuestionUpdate } from "@/lib/types";
 
@@ -11,7 +12,7 @@ const AUTOSAVE_DELAY_MS = 600;
 export type SaveState = "idle" | "saving" | "saved" | "error";
 
 /** Fields the creator can edit on a question; saved together as one PATCH. */
-export type QuestionEdit = Partial<Pick<Question, "title" | "description" | "required" | "properties" | "options">>;
+export type QuestionEdit = Partial<Pick<Question, "title" | "description" | "required" | "properties" | "options" | "logic">>;
 
 interface BuilderState {
   formId: number | null;
@@ -38,6 +39,7 @@ interface BuilderState {
 // rendering directly; only `saveState` (derived from it) does.
 const timers = new Map<number, ReturnType<typeof setTimeout>>(); // debounce timer per question
 const dirty = new Set<number>(); // edited locally, not yet sent
+const logicDirty = new Set<number>(); // logic rules edited; only then are they sent (see sendOnce)
 const inFlight = new Map<number, Promise<void>>(); // one running save chain per question
 const resaveQueued = new Set<number>(); // edited again while a save was running
 
@@ -67,6 +69,7 @@ export const useBuilderStore = create<BuilderState>()((set, get) => {
       timers.forEach(clearTimeout);
       timers.clear();
       dirty.clear();
+      logicDirty.clear();
       const selectedId = form.questions.some((q) => q.id === get().selectedId)
         ? get().selectedId
         : (form.questions[0]?.id ?? null);
@@ -88,6 +91,9 @@ export const useBuilderStore = create<BuilderState>()((set, get) => {
       required: question.required,
       properties: question.properties,
     };
+    // Rules are sent only when they were edited, so an unrelated edit (say a title) can never be
+    // rejected because a rule elsewhere became invalid after a reorder.
+    if (logicDirty.delete(id)) payload.logic = question.logic;
     if (QUESTION_TYPES[question.type].hasOptions) {
       // Temporary (negative) ids are omitted so the server creates those options.
       payload.options = question.options.map((o) => (o.id > 0 ? { id: o.id, label: o.label } : { label: o.label }));
@@ -150,6 +156,7 @@ export const useBuilderStore = create<BuilderState>()((set, get) => {
       timers.forEach(clearTimeout);
       timers.clear();
       dirty.clear();
+      logicDirty.clear();
       set({
         formId: form.id,
         questions: form.questions,
@@ -180,6 +187,7 @@ export const useBuilderStore = create<BuilderState>()((set, get) => {
     editQuestion: (id, changes) => {
       set((state) => ({ questions: state.questions.map((q) => (q.id === id ? { ...q, ...changes } : q)), saveState: "saving" }));
       dirty.add(id);
+      if (changes.logic) logicDirty.add(id);
       clearTimeout(timers.get(id));
       timers.set(
         id,
@@ -224,7 +232,8 @@ export const useBuilderStore = create<BuilderState>()((set, get) => {
         await api.deleteQuestion(id);
         set((state) => {
           const index = state.questions.findIndex((q) => q.id === id);
-          const questions = state.questions.filter((q) => q.id !== id).map((q, position) => ({ ...q, position }));
+          const remaining = pruneReferences(state.questions.filter((q) => q.id !== id), id);
+          const questions = remaining.map((q, position) => ({ ...q, position }));
           const selectedId =
             state.selectedId === id ? (questions[Math.min(index, questions.length - 1)]?.id ?? null) : state.selectedId;
           return { questions, selectedId };

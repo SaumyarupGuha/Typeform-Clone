@@ -10,6 +10,7 @@ from app.question_types.queries import completed_answers
 
 class YesNoHandler(QuestionTypeHandler):
     name = "yes_no"
+    logic_kind = "boolean"
     default_properties: Properties = {}
 
     def validate(self, question: Question, value: JsonValue) -> str | None:

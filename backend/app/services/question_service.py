@@ -9,6 +9,7 @@ from app.models.question import Question, QuestionOption
 from app.models.user import User
 from app.question_types import get_handler, merge_properties
 from app.schemas.question import OptionIn, QuestionCreate, QuestionUpdate
+from app.services import logic_service
 from app.services.form_service import clone_question
 
 STARTER_OPTION_LABELS = ("Choice 1", "Choice 2")
@@ -73,11 +74,14 @@ def update_question(db: Session, question: Question, changes: QuestionUpdate) ->
         message = handler.validate_properties(merged)
         if message:
             raise ValidationFailedError(message, errors={"properties": message})
-        question.properties = merged  # assign a new dict so SQLAlchemy sees the change
+        question.properties = _keep_logic(question, merged)  # assign a new dict so SQLAlchemy sees the change
     if changes.options is not None:
         if not handler.has_options:
             raise ValidationFailedError("This question type has no options")
         _apply_options(db, question, changes.options)
+    if changes.logic is not None:
+        logic_service.validate_logic(question.form.live_questions, question, changes.logic)
+        question.properties = {**question.properties, logic_service.LOGIC_KEY: changes.logic.model_dump()}
 
     _touch_form(question)
     db.commit()
@@ -85,12 +89,18 @@ def update_question(db: Session, question: Question, changes: QuestionUpdate) ->
     return question
 
 
+def _keep_logic(question: Question, properties: dict) -> dict:
+    """Type settings are replaced as a whole; the logic rules stored beside them must survive."""
+    logic = question.properties.get(logic_service.LOGIC_KEY)
+    return {**properties, logic_service.LOGIC_KEY: logic} if logic is not None else properties
+
+
 def _change_type(db: Session, question: Question, new_type: str) -> None:
     if _has_answers(db, question.id):
         raise ConflictError("The type of a question that has responses cannot be changed")
     handler = get_handler(new_type)
     question.type = new_type
-    question.properties = dict(handler.default_properties)
+    question.properties = _keep_logic(question, dict(handler.default_properties))
     if handler.has_options and not question.options:
         question.options = [QuestionOption(position=i, label=label) for i, label in enumerate(STARTER_OPTION_LABELS)]
     if not handler.has_options:
@@ -127,6 +137,7 @@ def _apply_options(db: Session, question: Question, options_in: list[OptionIn]) 
 
 def delete_question(db: Session, question: Question) -> None:
     form = question.form
+    logic_service.prune_references(form.live_questions, question.id)
     if _has_answers(db, question.id):
         question.deleted_at = utcnow()  # soft delete keeps old answers readable
     else:

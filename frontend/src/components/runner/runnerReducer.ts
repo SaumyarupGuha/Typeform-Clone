@@ -1,4 +1,5 @@
 import type { Draft } from "@/lib/draft";
+import { computePath } from "@/lib/logic";
 import type { JsonValue, PublicForm, ThankYouScreen } from "@/lib/types";
 
 export type RunnerStatus = "welcome" | "answering" | "submitting" | "done" | "closed";
@@ -8,6 +9,11 @@ export interface RunnerState {
   index: number;
   /** 1 = moving forward (screens slide up), -1 = moving back. Drives the slide direction. */
   direction: 1 | -1;
+  /**
+   * Indices of the questions already passed, oldest first. Logic jumps make the route
+   * non-linear, so "back" returns to the last entry rather than to index - 1.
+   */
+  history: number[];
   answers: Record<number, JsonValue>;
   /** Error message per question id. */
   errors: Record<number, string>;
@@ -20,6 +26,7 @@ export type RunnerAction =
   | { type: "start" }
   | { type: "answer"; questionId: number; value: JsonValue | undefined }
   | { type: "go"; index: number; direction: 1 | -1 }
+  | { type: "resume" }
   | { type: "fail"; errors: Record<number, string>; goTo?: number }
   | { type: "submitting" }
   | { type: "submitted"; thankYou: ThankYouScreen }
@@ -28,10 +35,18 @@ export type RunnerAction =
 export function createInitialState(form: PublicForm, draft: Draft | null): RunnerState {
   const hasProgress = draft !== null && (Object.keys(draft.answers).length > 0 || draft.index > 0);
   const showWelcome = form.settings.welcome_screen.enabled && !hasProgress;
+  const index = draft ? Math.min(draft.index, Math.max(form.questions.length - 1, 0)) : 0;
+  // Older drafts have no history: rebuild it from the route the saved answers lead along.
+  const rebuilt = draft
+    ? computePath(form.questions, draft.answers)
+        .map((question) => form.questions.indexOf(question))
+        .filter((position) => position < index)
+    : [];
   return {
     status: showWelcome ? "welcome" : "answering",
-    index: draft ? Math.min(draft.index, Math.max(form.questions.length - 1, 0)) : 0,
+    index,
     direction: 1,
+    history: draft?.history ?? rebuilt,
     answers: draft?.answers ?? {},
     errors: {},
     errorTick: 0,
@@ -55,17 +70,32 @@ export function runnerReducer(state: RunnerState, action: RunnerAction): RunnerS
     }
 
     case "go":
-      return { ...state, status: "answering", index: action.index, direction: action.direction, errors: {} };
+      return {
+        ...state,
+        status: "answering",
+        index: action.index,
+        direction: action.direction,
+        // Forward remembers where we came from; back forgets the screen we are leaving.
+        history: action.direction === 1 ? [...state.history, state.index] : state.history.slice(0, -1),
+        errors: {},
+      };
 
-    case "fail":
+    case "resume":
+      return { ...state, status: "answering" };
+
+    case "fail": {
+      const { goTo } = action;
       return {
         ...state,
         status: "answering",
         errors: action.errors,
         errorTick: state.errorTick + 1,
-        index: action.goTo ?? state.index,
-        direction: action.goTo !== undefined && action.goTo < state.index ? -1 : state.direction,
+        index: goTo ?? state.index,
+        direction: goTo !== undefined && goTo < state.index ? -1 : state.direction,
+        // Jumping back to an earlier question forgets the screens after it.
+        history: goTo === undefined ? state.history : state.history.filter((position) => position < goTo),
       };
+    }
 
     case "submitting":
       return { ...state, status: "submitting" };

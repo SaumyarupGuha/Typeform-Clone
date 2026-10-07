@@ -13,6 +13,7 @@ from app.models.response import Response
 from app.question_types import get_handler
 from app.schemas.form import FormSettings
 from app.schemas.question import QuestionOut
+from app.services import logic_service
 from app.schemas.response import (
     AnswerIn,
     ResponseAnswerOut,
@@ -58,8 +59,12 @@ def _get_open_response(db: Session, form: Form, token: str) -> Response:
     return response
 
 
-def _validate_answers(questions: list[Question], answers: list[AnswerIn]) -> dict[str, str]:
-    """Return {question_id: message} for every invalid answer; empty means all good."""
+def _validate_answers(questions: list[Question], answers: list[AnswerIn]) -> tuple[dict[str, str], list[Question]]:
+    """Check the answers. Returns ({question_id: message}, the questions on the respondent's path).
+
+    Only questions the respondent actually saw count: logic jumps can skip a required
+    question, and an answer to a skipped question is ignored rather than stored.
+    """
     errors: dict[str, str] = {}
     given: dict[int, JsonValue] = {}
     live_ids = {question.id for question in questions}
@@ -72,7 +77,8 @@ def _validate_answers(questions: list[Question], answers: list[AnswerIn]) -> dic
         else:
             given[answer.question_id] = answer.value
 
-    for question in questions:
+    path = logic_service.compute_path(questions, given)
+    for question in path:
         if str(question.id) in errors:
             continue
         handler = get_handler(question.type)
@@ -84,7 +90,7 @@ def _validate_answers(questions: list[Question], answers: list[AnswerIn]) -> dic
         message = handler.validate(question, value)
         if message:
             errors[str(question.id)] = message
-    return errors
+    return errors, path
 
 
 def submit_response(db: Session, slug: str, token: str, payload: SubmitIn) -> FormSettings:
@@ -92,14 +98,14 @@ def submit_response(db: Session, slug: str, token: str, payload: SubmitIn) -> Fo
     response = _get_open_response(db, form, token)
     questions = form.live_questions
 
-    errors = _validate_answers(questions, payload.answers)
+    errors, path = _validate_answers(questions, payload.answers)
     if errors:
         raise ValidationFailedError(errors=errors)
 
     # Everything below is one transaction: either all answers and the status change
     # are saved, or (on any error) none of them are.
     values = {answer.question_id: answer.value for answer in payload.answers}
-    for question in questions:
+    for question in path:
         handler = get_handler(question.type)
         value = values.get(question.id)
         if handler.is_empty(value):

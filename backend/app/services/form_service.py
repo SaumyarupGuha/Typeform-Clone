@@ -10,7 +10,9 @@ from app.models.form import Form
 from app.models.question import Question, QuestionOption
 from app.models.response import Response
 from app.models.user import User
+from app.question_types import get_handler
 from app.schemas.form import FormSettings, FormSummaryOut, FormUpdate
+from app.services import logic_service
 
 SLUG_ALPHABET = string.ascii_letters + string.digits
 SLUG_LENGTH = 8
@@ -92,11 +94,32 @@ def duplicate_form(db: Session, user: User, source: Form) -> Form:
         slug=generate_slug(db),
         settings=dict(source.settings),
     )
-    for question in source.live_questions:
+    originals = source.live_questions
+    for question in originals:
         copy.questions.append(clone_question(question, position=question.position))
     db.add(copy)
+    db.flush()  # the copies now have ids, so logic rules can be pointed at them
+    _remap_logic(originals, copy.live_questions)
     db.commit()
     return copy
+
+
+def _remap_logic(originals: list[Question], copies: list[Question]) -> None:
+    """A copied rule must refer to the copied questions and options, not the originals."""
+    question_ids = {old.id: new.id for old, new in zip(originals, copies)}
+    option_ids = {
+        old_option.id: new_option.id
+        for old, new in zip(originals, copies)
+        for old_option, new_option in zip(old.options, new.options)
+    }
+    choice_ids = {q.id for q in originals if get_handler(q.type).logic_kind == "choice"}
+    for copy in copies:
+        logic = logic_service.logic_of(copy)
+        if logic:
+            copy.properties = {
+                **copy.properties,
+                logic_service.LOGIC_KEY: logic_service.remap_ids(logic, question_ids, option_ids, choice_ids),
+            }
 
 
 def clone_question(source: Question, position: int) -> Question:

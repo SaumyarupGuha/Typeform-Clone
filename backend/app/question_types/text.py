@@ -49,18 +49,21 @@ class TextHandler(QuestionTypeHandler):
 
 class ShortTextHandler(TextHandler):
     name = "short_text"
+    logic_kind = "text"
     default_properties: Properties = {"placeholder": "", "max_length": 255}
     default_max_length = 255
 
 
 class LongTextHandler(TextHandler):
     name = "long_text"
+    logic_kind = "text"
     default_properties: Properties = {"placeholder": "", "max_length": 5000}
     default_max_length = 5000
 
 
 class EmailHandler(TextHandler):
     name = "email"
+    logic_kind = "text"
     default_properties: Properties = {"placeholder": "name@example.com"}
 
     def validate_properties(self, properties: Properties) -> str | None:

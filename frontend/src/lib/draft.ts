@@ -5,6 +5,8 @@ export interface Draft {
   token: string | null;
   answers: Record<number, JsonValue>;
   index: number;
+  /** Questions already passed (logic jumps make the route non-linear). Absent in older drafts. */
+  history?: number[];
 }
 
 const key = (slug: string) => `typeform-draft:${slug}`;

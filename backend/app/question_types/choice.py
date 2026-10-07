@@ -42,6 +42,7 @@ class ChoiceHandler(QuestionTypeHandler):
 
 class MultipleChoiceHandler(ChoiceHandler):
     name = "multiple_choice"
+    logic_kind = "choice"
     default_properties: Properties = {"allow_multiple": False, "randomize": False, "vertical": True}
 
     def validate(self, question: Question, value: JsonValue) -> str | None:
@@ -64,6 +65,7 @@ class MultipleChoiceHandler(ChoiceHandler):
 
 class DropdownHandler(ChoiceHandler):
     name = "dropdown"
+    logic_kind = "choice"
     default_properties: Properties = {"placeholder": "Type or select an option", "alphabetical": False}
 
     def validate(self, question: Question, value: JsonValue) -> str | None:

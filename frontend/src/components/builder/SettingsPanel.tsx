@@ -5,6 +5,7 @@ import { Menu } from "@/components/ui/Menu";
 import { QUESTION_TYPES } from "@/lib/questionTypes";
 import { QUESTION_TYPE_NAMES, type JsonValue } from "@/lib/types";
 import { useBuilderStore } from "@/store/builderStore";
+import { LogicPanel } from "./logic/LogicPanel";
 import { ToggleRow } from "./TypeSettings/fields";
 import { TypeChip } from "./TypeChip";
 
@@ -59,6 +60,8 @@ export function SettingsPanel() {
       <h3 className="mb-1 mt-5 text-sm font-semibold">{label} settings</h3>
       {/* Keyed by question so each field's typing state resets when another question is selected. */}
       <Settings key={`${question.id}-${question.type}`} question={question} onChange={changeProperties} />
+
+      <LogicPanel question={question} />
     </aside>
   );
 }

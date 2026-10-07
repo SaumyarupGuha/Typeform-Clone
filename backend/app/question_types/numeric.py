@@ -22,6 +22,7 @@ def _whole_if_possible(number: float | None) -> float | int | None:
 
 class NumberHandler(QuestionTypeHandler):
     name = "number"
+    logic_kind = "number"
     default_properties: Properties = {"min": None, "max": None}
 
     def validate_properties(self, properties: Properties) -> str | None:
@@ -70,6 +71,7 @@ class NumberHandler(QuestionTypeHandler):
 
 class RatingHandler(QuestionTypeHandler):
     name = "rating"
+    logic_kind = "number"
     default_properties: Properties = {"steps": 5, "shape": "star"}
 
     def validate_properties(self, properties: Properties) -> str | None:

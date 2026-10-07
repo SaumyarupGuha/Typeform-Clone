@@ -59,6 +59,12 @@ class Question(Base):
     def deleted(self) -> bool:
         return self.deleted_at is not None
 
+    @property
+    def logic(self) -> dict[str, Any]:
+        """Logic-jump rules; stored inside `properties` so the table needs no extra column."""
+        raw = self.properties.get("logic")
+        return raw if isinstance(raw, dict) else {}
+
 
 class QuestionOption(Base):
     __tablename__ = "question_options"

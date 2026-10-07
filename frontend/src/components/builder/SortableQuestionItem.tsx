@@ -2,9 +2,10 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { CopyPlus, GripVertical, MoreVertical, Trash2 } from "lucide-react";
+import { CopyPlus, GitBranch, GripVertical, MoreVertical, Trash2 } from "lucide-react";
 import { Menu } from "@/components/ui/Menu";
 import { cn } from "@/lib/cn";
+import { hasLogic } from "@/lib/logic";
 import type { Question } from "@/lib/types";
 import { TypeChip } from "./TypeChip";
 
@@ -46,6 +47,7 @@ export function SortableQuestionItem({ question, number, selected, onSelect, onD
         <span className={cn("truncate text-sm", !question.title && "italic text-ink-faint")}>
           {question.title || "Your question here"}
         </span>
+        {hasLogic(question) && <GitBranch className="size-3.5 shrink-0 text-ink-muted" aria-label="Has logic" />}
       </button>
       <Menu
         label={`Actions for question ${number}`}

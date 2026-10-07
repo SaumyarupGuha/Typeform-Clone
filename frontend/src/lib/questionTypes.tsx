@@ -36,6 +36,7 @@ import { Rating } from "@/components/runner/inputs/Rating";
 import { ShortText } from "@/components/runner/inputs/ShortText";
 import type { QuestionInputProps } from "@/components/runner/inputs/types";
 import { YesNo } from "@/components/runner/inputs/YesNo";
+import type { LogicKind } from "./logic";
 import { orderedOptions } from "./options";
 import type { JsonValue, Question, QuestionType } from "./types";
 import {
@@ -65,6 +66,8 @@ export interface QuestionTypeDef {
   defaultProperties: Record<string, JsonValue>;
   /** Choice types carry a list of options. */
   hasOptions: boolean;
+  /** Which operators logic jumps offer for this type (see lib/logic.ts). */
+  logicKind: LogicKind;
   /** True when the respondent has not answered; mirrors the server's is_empty. */
   isEmpty: (value: JsonValue | undefined) => boolean;
   /** The input rendered by the respondent flow AND by the builder canvas. */
@@ -94,6 +97,7 @@ export const QUESTION_TYPES: Record<QuestionType, QuestionTypeDef> = {
     chipClass: "bg-type-text text-type-text-ink",
     defaultProperties: { placeholder: "", max_length: 255 },
     hasOptions: false,
+    logicKind: "text",
     isEmpty: isEmptyAnswer,
     Input: ShortText,
     Settings: TextSettings,
@@ -108,6 +112,7 @@ export const QUESTION_TYPES: Record<QuestionType, QuestionTypeDef> = {
     chipClass: "bg-type-text text-type-text-ink",
     defaultProperties: { placeholder: "", max_length: 5000 },
     hasOptions: false,
+    logicKind: "text",
     isEmpty: isEmptyAnswer,
     Input: LongText,
     Settings: TextSettings,
@@ -122,6 +127,7 @@ export const QUESTION_TYPES: Record<QuestionType, QuestionTypeDef> = {
     chipClass: "bg-type-choice text-type-choice-ink",
     defaultProperties: { allow_multiple: false, randomize: false, vertical: true },
     hasOptions: true,
+    logicKind: "choice",
     isEmpty: isEmptyAnswer,
     Input: MultipleChoice,
     Settings: MultipleChoiceSettings,
@@ -142,6 +148,7 @@ export const QUESTION_TYPES: Record<QuestionType, QuestionTypeDef> = {
     chipClass: "bg-type-choice text-type-choice-ink",
     defaultProperties: { placeholder: "Type or select an option", alphabetical: false },
     hasOptions: true,
+    logicKind: "choice",
     isEmpty: isEmptyAnswer,
     Input: Dropdown,
     Settings: DropdownSettings,
@@ -156,6 +163,7 @@ export const QUESTION_TYPES: Record<QuestionType, QuestionTypeDef> = {
     chipClass: "bg-type-contact text-type-contact-ink",
     defaultProperties: { placeholder: "name@example.com" },
     hasOptions: false,
+    logicKind: "text",
     isEmpty: isEmptyAnswer,
     Input: Email,
     Settings: EmailSettings,
@@ -170,6 +178,7 @@ export const QUESTION_TYPES: Record<QuestionType, QuestionTypeDef> = {
     chipClass: "bg-type-number text-type-number-ink",
     defaultProperties: { min: null, max: null },
     hasOptions: false,
+    logicKind: "number",
     isEmpty: isEmptyAnswer,
     Input: NumberInput,
     Settings: NumberSettings,
@@ -184,6 +193,7 @@ export const QUESTION_TYPES: Record<QuestionType, QuestionTypeDef> = {
     chipClass: "bg-type-choice text-type-choice-ink",
     defaultProperties: {},
     hasOptions: false,
+    logicKind: "boolean",
     isEmpty: isEmptyAnswer,
     Input: YesNo,
     Settings: YesNoSettings,
@@ -198,6 +208,7 @@ export const QUESTION_TYPES: Record<QuestionType, QuestionTypeDef> = {
     chipClass: "bg-type-rating text-type-rating-ink",
     defaultProperties: { steps: 5, shape: "star" },
     hasOptions: false,
+    logicKind: "number",
     isEmpty: isEmptyAnswer,
     Input: Rating,
     Settings: RatingSettings,
