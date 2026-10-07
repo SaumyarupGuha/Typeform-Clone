@@ -9,3 +9,6 @@ node_modules/
 .env.local
 
 uploads/
+
+# Local design references (screenshots of the real product); kept on the author machine only.
+docs/typeform-ref/

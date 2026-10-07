@@ -174,7 +174,7 @@ Logic jumps work the same way: a type only declares its `logic_kind` (text, numb
 ```text
 typeform-clone/
 ├── README.md
-├── docs/                         ASSIGNMENT.md · PLAN.md · PROGRESS.md · typeform-ref/ · screenshots/
+├── docs/                         ASSIGNMENT.md · PLAN.md · PROGRESS.md · screenshots/
 ├── backend/
 │   ├── app/
 │   │   ├── main.py               app factory, CORS, routers, create tables and seed on startup
