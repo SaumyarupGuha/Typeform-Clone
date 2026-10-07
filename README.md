@@ -6,9 +6,12 @@ A full-stack clone of [Typeform](https://www.typeform.com): build a form in a dr
 
 | | |
 | --- | --- |
-| **Live app** | _Add your Vercel URL here after deploying (see [Deployment](#deployment))_ |
-| **Sample public form** | _`https://<your-app>.vercel.app/to/<slug>`: the seeded "Customer Satisfaction Survey" is a good one to try_ |
-| **API docs (Swagger)** | _`https://<your-service>.onrender.com/docs`_ |
+| **Live app** | https://typeform-clone-lemon.vercel.app |
+| **Try the respondent flow** | Open the app, then in the workspace use **Copy link** on *Customer Satisfaction Survey* (or open it and use the **Share** tab) and visit the link, no login needed |
+| **API docs (Swagger)** | https://typeform-clone-api-szn4.onrender.com/docs |
+| **Source** | https://github.com/SaumyarupGuha/Typeform-Clone |
+
+> The demo runs on free hosting tiers. The API sleeps when idle, so the **first load can take up to a minute**. Its disk is also temporary: the three demo forms are re-created automatically after a restart, but forms or responses you create may disappear. See [Deployment](#deployment).
 
 ![Workspace](docs/screenshots/workspace.png)
 

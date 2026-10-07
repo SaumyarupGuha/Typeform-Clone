@@ -462,3 +462,9 @@ Requested after the six phases: check which of the assignment's bonus items were
 - **Cold start:** `maxDuration = 60` on the public form page, so Vercel waits for a sleeping free Render service instead of cutting the first visitor off. `engines.node >= 20.9` in `package.json`.
 - **Docs:** the README deployment section now walks through Render, then Vercel, then connecting them, with the free-plan caveats (the service sleeps and its disk is wiped on restart, so created forms do not survive), how to keep data with a paid disk, and a troubleshooting table.
 
+## Deployed
+
+- **Frontend:** https://typeform-clone-lemon.vercel.app (Vercel, root directory `frontend`, `NEXT_PUBLIC_API_URL` set to the API address).
+- **API:** https://typeform-clone-api-szn4.onrender.com (Render Blueprint from `render.yaml`, free plan; `FRONTEND_ORIGIN` set to the Vercel address).
+- **Verified live:** CORS allows the Vercel origin and refuses others; demo forms are seeded; shareable links use the Vercel address; Vercel renders a published form by fetching it from Render; the live server enforces required questions (422), stores a valid submission and reports it in results. The check used a temporary form that was deleted afterwards, leaving the demo data untouched.
+
