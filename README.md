@@ -8,7 +8,7 @@ A full-stack clone of [Typeform](https://www.typeform.com): build a form in a dr
 | --- | --- |
 | **Live app** | _Add your Vercel URL here after deploying (see [Deployment](#deployment))_ |
 | **Sample public form** | _`https://<your-app>.vercel.app/to/<slug>`: the seeded "Customer Satisfaction Survey" is a good one to try_ |
-| **API docs (Swagger)** | _`https://<your-api>.up.railway.app/docs`_ |
+| **API docs (Swagger)** | _`https://<your-service>.onrender.com/docs`_ |
 
 ![Workspace](docs/screenshots/workspace.png)
 
@@ -64,7 +64,7 @@ A full-stack clone of [Typeform](https://www.typeform.com): build a form in a dr
 | ORM / schemas | SQLAlchemy 2.0, Pydantic v2 (+ email-validator) | Typed models and request/response contracts |
 | Database | SQLite | Required; one file, on a volume in production |
 | Tests | pytest + FastAPI `TestClient` | 136 tests |
-| Hosting | Vercel (frontend), Railway with a volume (backend) | |
+| Hosting | Vercel (frontend), Render (backend; Railway also supported) | Config in `render.yaml`; see [Deployment](#deployment) |
 
 The font is **Inter**: Typeform's own typeface is proprietary, so I used the closest free geometric sans. Everything is written from scratch; no code was copied from existing Typeform clones.
 
@@ -183,7 +183,7 @@ typeform-clone/
 │   │   ├── services/             form · question · response · logic · file · summary · export
 │   │   └── question_types/       one handler per type + registry.py
 │   ├── tests/                    forms · submit validation · results · logic · partial · files · migrations · config
-│   ├── requirements.txt · railway.json · .env.example
+│   ├── requirements.txt (pinned) · railway.json · .env.example
 └── frontend/
     └── src/
         ├── app/                  workspace · forms/[id]/(create|share|results) · forms/[id]/preview · to/[slug]
@@ -411,22 +411,73 @@ Interactive docs live at `/docs`. Every error uses one shape: `{"detail": {"code
 
 ## Deployment
 
-**Backend on Railway** (with a volume so the SQLite file survives redeploys)
+The frontend goes on **Vercel** and the API on **Render**. Each needs the other's address, so deploy in this order. The code must be on GitHub first.
 
-1. New project → deploy from this repo, **root directory `backend/`**. `railway.json` sets the start command (`uvicorn app.main:app --host 0.0.0.0 --port $PORT`) and the `/health` check.
-2. Add a **volume** mounted at `/data`.
-3. Set variables: `DATABASE_URL=sqlite:////data/typeform.db`, `UPLOAD_DIR=/data/uploads` (so uploaded files survive redeploys on the same volume) and `FRONTEND_ORIGIN=https://<your-app>.vercel.app` (comma-separate extra origins, such as a preview URL).
-4. Deploy. On first start the app creates the folder and tables and seeds the demo data. The seed runs only when the database is empty, so redeploys keep real data.
+### 1. API on Render
 
-**Frontend on Vercel**
+1. In Render choose **New > Blueprint**, connect your GitHub account and pick this repository. Render reads [`render.yaml`](render.yaml) and proposes one web service, `typeform-clone-api` (Python, root directory `backend/`).
+2. It asks for `FRONTEND_ORIGIN`. Type a placeholder such as `http://localhost:3000` for now; you will set the real value in step 3.
+3. Click **Apply** and wait for the first deploy to finish (a few minutes). Open `https://<your-service>.onrender.com/health`: you should see `{"status":"ok"}`. `/docs` shows the interactive API docs.
 
-1. Import the repo, set the **root directory to `frontend/`** (framework: Next.js).
-2. Set `NEXT_PUBLIC_API_URL=https://<your-api>.up.railway.app`.
-3. Deploy, then put the Vercel URL into the Railway `FRONTEND_ORIGIN` and redeploy the backend (CORS and public links use it).
+No Blueprint? Create a **Web Service** by hand with the same values: root directory `backend`, build command `pip install -r requirements.txt`, start command `uvicorn app.main:app --host 0.0.0.0 --port $PORT`, health check path `/health`, and the environment variables from the table below.
 
-**Fallback:** a Render free web service also works, but its disk is not persistent. The seed-on-empty startup keeps the demo usable after each restart, but data and uploaded files created in the app are lost, so say so in the demo.
+### 2. Frontend on Vercel
 
-**Upgrading an existing database:** on startup the backend adds the new `files` table and, if the database predates file uploads, rebuilds the `questions` table once so its type constraint accepts `file_upload` (existing data is kept). No manual step is needed.
+1. In Vercel choose **Add New > Project** and import the repository.
+2. Set **Root Directory** to `frontend` (Vercel detects Next.js by itself).
+3. Add the environment variable `NEXT_PUBLIC_API_URL` = your Render address, for example `https://typeform-clone-api.onrender.com` (https, no trailing slash).
+4. Click **Deploy**. Your app is at `https://<project>.vercel.app`.
+
+### 3. Connect them
+
+Back in Render, open the service's **Environment** tab and set `FRONTEND_ORIGIN` to your Vercel address, exactly as the browser shows it (`https://<project>.vercel.app`, no trailing slash). Save: Render redeploys by itself. Two things depend on this value:
+
+- **CORS**: the browser may only call the API from this origin.
+- **Public form links**: links such as `https://<project>.vercel.app/to/AbC123xy` are built from it.
+
+To allow more than one address (a custom domain, a Vercel preview), separate them with commas; the first one is used for public links.
+
+### 4. Check it works
+
+Open the Vercel address: the workspace should list the three demo forms. Then copy a published form's link, open it in a private window, answer it, and look at the results.
+
+| Environment variable | Where | Value |
+| --- | --- | --- |
+| `NEXT_PUBLIC_API_URL` | Vercel | the Render address. It is baked into the build, so after changing it, **redeploy** the Vercel project |
+| `FRONTEND_ORIGIN` | Render | the Vercel address (comma-separate extra origins) |
+| `DATABASE_URL` | Render | `sqlite:///./typeform.db` on the free plan; `sqlite:////data/typeform.db` with a disk |
+| `UPLOAD_DIR` | Render | `./uploads` on the free plan; `/data/uploads` with a disk |
+| `PYTHON_VERSION` | Render | `3.12.7` (already in `render.yaml`) |
+
+### What the free plan means (read this before a demo)
+
+- **It sleeps.** A free Render service stops after about 15 minutes without traffic, and the next request takes roughly 30 to 60 seconds while it starts. The public form page waits for it (up to a minute) instead of failing, but the first visitor will see a slow load. To keep it awake, point a free uptime monitor (UptimeRobot, cron-job.org) at `https://<your-service>.onrender.com/health` every 10 minutes.
+- **Its disk is temporary.** The database and uploaded files are wiped whenever the service restarts (a redeploy, a wake-up after sleeping, routine maintenance). The app handles that gracefully, because on every start it creates the tables and seeds the demo data when the database is empty, so the demo is always usable. But **forms and responses created in the app do not survive a restart.**
+
+### Keeping data (paid plan)
+
+To make data and uploaded files permanent, give the API a persistent disk (Render's Starter plan or higher):
+
+1. Change `plan: free` to `plan: starter` in `render.yaml` and uncomment the `disk:` block (mount path `/data`), or add a disk in the dashboard.
+2. Set `DATABASE_URL=sqlite:////data/typeform.db` and `UPLOAD_DIR=/data/uploads`.
+
+The seed only runs when the database is empty, so redeploys never overwrite real data. SQLite on one disk suits a single API instance; a database service such as Postgres would be the next step for more.
+
+### Troubleshooting
+
+| What you see | Likely cause and fix |
+| --- | --- |
+| The page loads but lists no forms, and the browser console shows a CORS error | `FRONTEND_ORIGIN` on Render does not exactly match the address in the browser bar (check `https`, spelling, and no trailing slash) |
+| Requests go to `127.0.0.1:8000` or fail immediately | `NEXT_PUBLIC_API_URL` was not set before the build. Set it in Vercel and **redeploy** |
+| A shared form link starts with the wrong address | The first value of `FRONTEND_ORIGIN` is not your Vercel address |
+| Everything is slow or "could not load" once, then fine | The free Render service was asleep; retry, or use the uptime monitor above |
+| Forms you created have vanished | The free disk was reset by a restart; see "Keeping data" |
+| File uploads fail with a size error | The file is over the question's limit (at most 25 MB) |
+
+### Alternatives
+
+- **Railway**: [`backend/railway.json`](backend/railway.json) is included. Use root directory `backend/`, add a volume at `/data`, and set `DATABASE_URL=sqlite:////data/typeform.db`, `UPLOAD_DIR=/data/uploads` and `FRONTEND_ORIGIN`. Railway's volume keeps data across restarts.
+- **Upgrading an existing database:** on startup the backend adds the `files` table and, if the database predates file uploads, rebuilds the `questions` table once so its type constraint accepts `file_upload` (existing data is kept). No manual step is needed.
 
 ## What I would do next
 

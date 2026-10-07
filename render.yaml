@@ -1,0 +1,33 @@
+# Render Blueprint for the API (the frontend is deployed on Vercel; see the README).
+# On Render: New > Blueprint > pick this repository. Render reads this file and creates the service.
+services:
+  - type: web
+    name: typeform-clone-api
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      # Your Vercel address, for example https://typeform-clone.vercel.app (https, no trailing slash).
+      # Render asks for it when the Blueprint is created; change it later under Environment.
+      - key: FRONTEND_ORIGIN
+        sync: false
+      # Free plan: the disk is wiped whenever the service restarts, so the app re-creates and
+      # re-seeds the database on start. See "Keeping data" in the README to make it permanent.
+      - key: DATABASE_URL
+        value: sqlite:///./typeform.db
+      - key: UPLOAD_DIR
+        value: ./uploads
+
+    # --- To keep data and uploaded files across restarts (paid plan): ---
+    #   1. change `plan: free` to `plan: starter`
+    #   2. uncomment the disk below
+    #   3. set DATABASE_URL to sqlite:////data/typeform.db and UPLOAD_DIR to /data/uploads
+    # disk:
+    #   name: data
+    #   mountPath: /data
+    #   sizeGB: 1

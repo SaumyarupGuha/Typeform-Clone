@@ -452,3 +452,13 @@ Requested after the six phases: check which of the assignment's bonus items were
 - A single ending (the thank-you screen): "jump to the end" goes there. Several endings are not built.
 - Uploads are kept on the backend disk (a volume on Railway). Abandoned uploads stay until their response is deleted, and there is no virus scanning.
 - A file question cannot change type once it has answers (the same rule as the other types).
+
+## Deployment preparation: Vercel + Render
+
+- **`render.yaml`** (Render Blueprint): one Python web service for the API with root directory `backend/`, the start command, a `/health` check and the environment variables. Free plan by default, with the paid-plan disk settings written next to it as comments.
+- **Pinned backend dependencies** (`requirements.txt`) to the versions the tests and end-to-end checks used, so a deploy installs exactly what was tested. Verified by creating a brand-new virtual environment from that file alone (it resolves with no conflicts) and starting the API with the exact Render command and environment.
+- **Verified in that Render-style start:** health check, automatic seeding of an empty database, CORS allowed for the Vercel origin and refused for any other, the upload preflight (`PUT` with the `X-File-Name` header), and public links built from `FRONTEND_ORIGIN`.
+- **Verified for Vercel:** a production build with `NEXT_PUBLIC_API_URL` set contains the Render address in the browser code and no localhost address.
+- **Cold start:** `maxDuration = 60` on the public form page, so Vercel waits for a sleeping free Render service instead of cutting the first visitor off. `engines.node >= 20.9` in `package.json`.
+- **Docs:** the README deployment section now walks through Render, then Vercel, then connecting them, with the free-plan caveats (the service sleeps and its disk is wiped on restart, so created forms do not survive), how to keep data with a paid disk, and a troubleshooting table.
+

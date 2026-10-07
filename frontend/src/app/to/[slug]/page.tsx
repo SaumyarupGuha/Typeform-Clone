@@ -15,6 +15,10 @@ const loadForm = cache(async (slug: string): Promise<PublicForm | null> => {
   }
 });
 
+// A free API host (Render) sleeps when idle and takes up to a minute to wake. Without this, the
+// hosting platform would cut this page off long before the API answers the first visitor.
+export const maxDuration = 60;
+
 interface PageProps {
   params: Promise<{ slug: string }>;
 }
